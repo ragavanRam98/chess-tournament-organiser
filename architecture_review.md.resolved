@@ -1,0 +1,493 @@
+# Chess Tournament Entry Platform — Architecture Review
+
+**Reviewer perspective:** Senior Software Architect & Distributed Systems Expert  
+**Document version reviewed:** 1.0 (Easy Chess Academy)  
+**Review date:** 2026-03-05
+
+---
+
+## 1. Architecture Review
+
+### Is the architecture appropriate for the problem?
+
+**Yes — with reservations.**
+
+The core idea is correct: a web platform that digitises chess tournament management is a well-bounded, event-driven CRUD problem with a sprinkle of async workloads (payments, notifications, exports). A modular monolith is entirely appropriate for this maturity stage.
+
+However, the document reads more like a **product vision memo** than a technical architecture. It describes *what* the system does but almost nothing about *how* it is built. Critical sections — schema design, API contracts, service boundaries, deployment topology — are described at a single-sentence level. For a team starting active development, this is insufficient guidance.
+
+### Modular monolith: correct choice?
+
+**Yes, for Phase 1 & 2.** The domain is small enough that microservices would add operational overhead with no benefit. NestJS modules map well to the listed domains (`auth`, `tournaments`, `registrations`, `payments`, etc.). Each module should own its own DB queries (via Prisma) and expose only a typed service interface to other modules — no cross-module DTO imports.
+
+The document hints at eventual "Microservices architecture" for large scale (Section 16). This is premature speculation. At 500 K players and 2 M registrations, a well-tuned monolith with read replicas and connection pooling (PgBouncer) will handle the load without decomposition.
+
+### Potential bottlenecks
+
+| Area | Bottleneck Risk | Why |
+|---|---|---|
+| Payment webhook processing | **High** | Razorpay fires webhooks in bursts during popular tournament cutoffs; synchronous DB writes will back up |
+| Excel export | **Medium** | Large exports (1000+ registrations) block worker threads if not fully async |
+| Registration surge | **High** | Popular tournaments receive simultaneous registrations; naive INSERT without optimistic locking → duplicate seat allocation |
+| Notification delivery | **Low-Medium** | WhatsApp Business API has rate limits; queue must handle back-pressure |
+| Admin analytics queries | **Medium** | Aggregation queries on `registrations` + `payments` tables degrade as data grows |
+
+### Missing infrastructure components (summary — detailed in §8)
+
+- **No API gateway** — rate limiting described but no layer to enforce it globally
+- **No service health checks / liveness probes** documented
+- **No database connection pooling** (PgBouncer / Prisma connection limits)
+- **No dead-letter queue** for failed BullMQ jobs
+- **No distributed tracing** (OpenTelemetry)
+- **No feature flags** — Phase 2/3 rollout strategy undefined
+
+---
+
+## 2. Technology Stack Evaluation
+
+### Frontend — Next.js + TypeScript + TailwindCSS + React Query
+
+**Verdict: Appropriate.**
+
+Next.js is mature for this use case. Server-side rendering benefits SEO for the public tournament discovery page (Phase 2). React Query is a good fit for cache-backed server state.
+
+**Risks:**
+- Vercel hosting works for Phase 1 but becomes expensive at scale (serverless function execution cost). Plan a self-hosted fallback on Railway, Fly.io, or a VPS early.
+- No mention of form validation library (recommend `react-hook-form` + `zod` for type-safe forms across the registration flow).
+
+### Backend — NestJS + Node.js + Prisma + REST
+
+**Verdict: Good choice — Prisma deserves scrutiny.**
+
+NestJS's DI container and module architecture is well-suited for a growing modular monolith. TypeScript end-to-end with the frontend reduces context-switching.
+
+**Prisma risks:**
+- Prisma's connection handling is naive in serverless and multi-instance deployments. With multiple Docker replicas you'll hit Postgres `max_connections` quickly. **You must put PgBouncer in front of Postgres from day one**.
+- Prisma's `$transaction` API is important for atomic registration + payment order creation — the document does not confirm this is being used.
+- Prisma does not support DB-level advisory locks natively; you'll need raw SQL for seat-limit enforcement.
+
+**Alternative to consider:** If the team has Prisma experience, keep it. If not, **Drizzle ORM** is a lighter, more SQL-transparent option with better connection pooling compatibility.
+
+### Database — PostgreSQL
+
+**Verdict: Correct, no alternatives needed.**
+
+Relational integrity is critical here: a player must not be registered without a payment, a payment must belong to one registration, etc. PostgreSQL's row-level locking and ACID guarantees are exactly what's needed. Do **not** consider MongoDB or another document store.
+
+### Cache / Queue — Redis + BullMQ
+
+**Verdict: Appropriate.**
+
+BullMQ (Redis-backed) is the de facto standard for NestJS background jobs. Good choice.
+
+**Risks:**
+- Redis used for both cache AND queue creates a single point of failure. Consider Redis Sentinel or Redis Cluster at growth stage, or separate Redis instances for cache vs. queue.
+- No mention of job retry limits, backoff strategies, or dead-letter queues. These are **required** from day one for payment and notification jobs.
+
+### Storage — S3-compatible (AWS S3 / Cloudflare R2 / MinIO)
+
+**Verdict: Correct.**
+
+Cloudflare R2 is the strongest recommendation here: zero egress fees, S3-compatible API, integrates with Cloudflare CDN natively. For a cost-conscious early stage product, R2 is the obvious choice over AWS S3.
+
+MinIO is fine for local development only.
+
+### Infrastructure — Cloudflare + Vercel + Docker
+
+**Verdict: Partially appropriate.**
+
+- **Cloudflare:** Excellent — DDoS protection, CDN, WAF, and R2 in one vendor.
+- **Vercel:** Fine for Phase 1 frontend. Watch costs in Phase 2+.
+- **Docker containers for backend:** Good. But *where*? The document doesn't specify: AWS ECS, GCP Cloud Run, Fly.io, Railway, bare VPS? This is a critical gap. For an Indian startup, **Railway or Render** are cost-effective managed options. **Fly.io** gives more control. Bare VPS (DigitalOcean/Hetzner) is cheapest but requires more ops.
+- **No mention of container orchestration** — even a single-host Docker Compose setup needs documentation.
+- **Managed PostgreSQL:** Not named. Recommend **Supabase** (generous free tier, built-in auth if needed), **Neon** (serverless Postgres), or **Railway Postgres**.
+
+---
+
+## 3. Database Design Analysis
+
+### Is a relational DB correct?
+
+**Absolutely yes.** The domain has strong integrity requirements:
+
+- A `Registration` must link to exactly one `Player`, one `Category`, one `Tournament`
+- A `Payment` must link to exactly one `Registration`
+- Seat limits must be enforced atomically (no overbooking)
+
+Any eventual consistency model (NoSQL) would make these invariants extremely hard to enforce correctly.
+
+### Current identified entities
+
+The document names: `Users`, `Organizers`, `Tournaments`, `Categories`, `Players`, `Registrations`, `Payments`
+
+### Missing entities
+
+| Missing Entity | Why it matters |
+|---|---|
+| `TournamentApprovals` | Audit log of who approved/rejected a tournament and when. Critical for disputes. |
+| `OrganiserVerification` (Phase 2) | Documents submitted by organisers for identity verification |
+| `NotificationLog` | Track what notifications were sent, when, to whom — required for debugging missed messages |
+| `AuditLog` | Row-level change history for `Payments` and `Registrations` — regulatory + dispute handling |
+| `RefundRequests` | Refunds are mentioned but there's no entity to model the lifecycle |
+| `Subscriptions` (Phase 3) | Organiser subscription plans for the ₹999/month model |
+| `FeatureTournaments` | Sponsored/featured listings need a separate table with scheduling |
+| `QRCheckins` (Phase 2) | QR code check-in events at tournament venue |
+
+### Relationship gaps
+
+- **Category ↔ Player age validation rule**: Where do the age band rules for U10, U14 live? They should be a field on `Category` (`min_age`, `max_age`), not hard-coded in application logic.
+- **Player ↔ User**: Is a `Player` always a `User` who logged in, or can an organiser register a child on behalf of a parent? This needs a `guardian_user_id` optional FK on `Player`.
+- **Tournament ↔ Organiser**: Is a tournament always owned by a single organiser, or can co-organisers exist? Need a `TournamentOrganisers` join table.
+- **Payment states**: Payments need a proper state machine: `INITIATED → PENDING → PAID | FAILED | REFUNDED | PARTIALLY_REFUNDED`. A single status column with an enum is not enough for audit purposes.
+
+### Scaling risks
+
+- **Registration table**: At 2M rows, queries filtering by `tournament_id` + `status` will be slow without composite indexes. Plan: `CREATE INDEX CONCURRENTLY idx_registrations_tournament_status ON registrations(tournament_id, status)`.
+- **Payments table**: High insert rate during popular tournaments. Partition by `created_at` month at scale (Postgres native partitioning).
+- **Aggregation queries**: Admin dashboard aggregations (`COUNT`, `SUM`) on unpartitioned tables degrade. Implement a **materialized view** or a dedicated reporting schema updated by a nightly job.
+
+### Recommended schema additions
+
+```sql
+-- Missing: tournament seat locking mechanism
+ALTER TABLE categories ADD COLUMN max_seats INT NOT NULL DEFAULT 0;
+ALTER TABLE categories ADD COLUMN registered_count INT NOT NULL DEFAULT 0;
+-- Use SELECT ... FOR UPDATE on category row during registration to prevent overselling
+
+-- Missing: payment state machine
+CREATE TYPE payment_status AS ENUM 
+  ('INITIATED','PENDING','PAID','FAILED','REFUNDED','PARTIALLY_REFUNDED');
+
+-- Missing: audit
+CREATE TABLE audit_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_type VARCHAR(50) NOT NULL,
+  entity_id UUID NOT NULL,
+  action VARCHAR(50) NOT NULL,
+  old_value JSONB,
+  new_value JSONB,
+  performed_by UUID REFERENCES users(id),
+  performed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+---
+
+## 4. API Design Review
+
+### Current state
+
+The document mentions "REST API" but provides zero endpoint definitions. This is the most significant gap in the document.
+
+### What a minimal Phase 1 REST API must define
+
+```
+POST   /auth/signup
+POST   /auth/login
+POST   /auth/refresh
+POST   /auth/verify-otp
+
+GET    /tournaments                   (public, paginated)
+POST   /organiser/tournaments         (organiser-scoped)
+PATCH  /organiser/tournaments/:id
+GET    /organiser/tournaments/:id/registrations
+GET    /organiser/tournaments/:id/registrations/export   (triggers async job)
+
+POST   /tournaments/:id/categories/:catId/register       (player)
+GET    /my/registrations                                 (player)
+
+POST   /payments/create-order
+POST   /payments/webhook              (Razorpay → signed)
+POST   /payments/verify
+
+GET    /admin/tournaments             (pending approval)
+PATCH  /admin/tournaments/:id/status
+GET    /admin/analytics
+```
+
+### Separation of concerns assessment
+
+The module list (`auth`, `tournaments`, `categories`, `registrations`, `payments`, `reports`, `admin`) is good. However:
+
+- **`reports` module** should be renamed to `exports` — "reports" implies an analytics pipeline which is a different concern.
+- **`admin` module** should be a thin façade over other modules, not a God module with its own data access.
+- There is **no API versioning strategy**. Without `/v1/` prefix in routes from day one, a breaking change in Phase 2 forces a flag day for all clients. Add `/api/v1/` from the first commit.
+
+### Versioning strategy recommendation
+
+Use **URL path versioning** (`/api/v1/...`). Header-based versioning is harder to test and debug. NestJS supports this natively with `app.setGlobalPrefix('api/v1')`.
+
+### Missing API design concerns
+
+- **Idempotency keys** on `POST /payments/create-order` — critical for payment APIs to prevent duplicate orders on retry
+- **Cursor-based pagination** for `/tournaments` and `/registrations` — offset pagination degrades at scale
+- **Webhook signature validation endpoint** must be a separate, unauthenticated route protected only by signature HMAC check
+- **Rate limit headers** (`X-RateLimit-Remaining`, `Retry-After`) should be returned to clients
+
+---
+
+## 5. Multi-Tenant Architecture Review
+
+### Current approach
+
+The document implies tenant isolation via `organizer_id` FK on tournaments. This is a **logical isolation** approach (shared schema, shared database, row-level filtering).
+
+### Is this sufficient?
+
+**For Phase 1 — Yes. For Phase 2+ — Risks exist.**
+
+#### Design strengths
+- Simple to implement, easy to query across tenants for platform-wide analytics
+- No operational overhead of managing per-tenant schemas or databases
+
+#### Potential data leakage risks
+
+| Risk | Scenario | Mitigation |
+|---|---|---|
+| Missing `organizer_id` filter | A developer forgets to scope a query → Organiser A sees Organiser B's player list | Use NestJS Guards + Prisma middleware to inject `organizer_id` filter into every query automatically |
+| Report download URL exposure | S3 link for Organiser A's Excel export guessed by Organiser B | Signed URLs with short expiry (15 min), file paths must include `organizer_id` in the S3 key |
+| Admin endpoint exposure | No role check on an `/admin/*` route → any authenticated user accesses it | Every admin route must have an explicit `@Roles(Role.SUPER_ADMIN)` decorator; integration tests must verify 403 for organiser tokens |
+| Payment cross-tenant read | Player queries another organiser's payment record by guessing UUID | All payment queries must include `registration.tournament.organizer_id = currentUser.organizerId` join |
+
+#### Recommended isolation improvements
+
+1. **Repository layer policy enforcement**: Create a `TenantAwareRepository` base class in Prisma that automatically appends `where: { organizerId: ctx.organizerId }` to all queries. This makes tenant scoping structural, not reliance on developer discipline.
+
+2. **Row-Level Security (RLS) in PostgreSQL**: For sensitive tables (`registrations`, `payments`), enable Postgres RLS policies keyed on a `app.current_organizer_id` session variable. This is a defence-in-depth measure independent of application logic.
+
+3. **S3 key namespacing**: All object storage keys must follow `/{organizer_id}/{tournament_id}/{file}` convention. Never use flat namespaces.
+
+#### Future multi-tenant scaling strategies
+
+- At 1,000+ active organiser accounts: Consider **schema-per-tenant** for enterprise-tier organisers (FIDE-affiliated organisations) with dedicated schemas (e.g., `tenant_abc.tournaments`).
+- At 10,000+ tournaments: Evaluate a **tenant routing layer** that maps `organizer_id` to a specific database shard.
+
+---
+
+## 6. Security Review
+
+### Authentication design
+
+**Stated:** JWT authentication. This is correct but underspecified.
+
+**Critical questions not answered:**
+- Are access tokens short-lived (15 min) with refresh tokens? Or long-lived (7 days)? Long-lived JWTs cannot be revoked without a token blocklist.
+- Where are refresh tokens stored? `httpOnly` cookies (safe) or `localStorage` (XSS-vulnerable)?
+- Is there phone OTP verification for players? The document mentions "phone verification" in fraud prevention but not in the auth flow.
+- Is there multi-factor auth for admin accounts? A compromised Super Admin account is catastrophic.
+
+**Recommendation:** Access tokens: 15-minute lifetime. Refresh tokens: stored in `httpOnly` Secure `SameSite=Strict` cookies. Maintain a `refresh_token_sessions` table for revocation capability. Admin accounts must require TOTP (e.g., Google Authenticator).
+
+### Payment verification
+
+**Stated:** Razorpay webhook verification, frontend responses not trusted.
+
+**This is the correct baseline.** However:
+
+- **Critical missing**: HMAC-SHA256 signature verification of every incoming webhook using Razorpay's secret. The raw request body must be read before any JSON parsing (common bug in Express/NestJS where body-parser consumes the raw body).
+- **Missing**: Idempotency check — re-delivery of the same webhook event (Razorpay retries) must not double-confirm a payment. Check `payment_id` uniqueness before processing.
+- **Missing**: Payment timeout handling — if the webhook is never received (network failure), the registration stays in `PENDING` indefinitely. A scheduled job must poll Razorpay's payment status API for orders older than 30 minutes.
+
+### Fraud prevention
+
+**Current measures:** Duplicate phone check, rate limiting.
+
+**Missing:**
+- No **velocity check** on a single IP/device creating multiple accounts to register multiple players
+- No **payment velocity check** — one compromised card used for mass registrations
+- No CAPTCHA on the registration form (bot registrations)
+- No email domain validation for organisers (free email → unverified organiser)
+
+### API protection
+
+**Stated:** Rate limiting, input validation, HTTPS.
+
+**Gaps:**
+- No mention of **CORS policy** (allowing all origins is a common misconfiguration)
+- No **Content Security Policy** headers
+- No **SQL injection protection** documentation (Prisma parameterises by default, but raw queries must be audited)
+- No **file upload validation** for tournament posters (file type, size, malware scanning)
+- Rate limiting backend not named — is it in-process (NestJS `@nestjs/throttler`) or external (Cloudflare WAF)? Both are needed at different layers.
+
+### Critical vulnerabilities summary
+
+> [!CAUTION]
+> 1. **No refresh token revocation mechanism** — a stolen refresh token is permanently valid.
+> 2. **Webhook raw body handling** — a common NestJS bug causes Razorpay signature verification to always fail or always pass, depending on how body-parser is configured.
+> 3. **No payment timeout reconciliation** — stuck PENDING payments are a support and revenue liability.
+> 4. **No admin MFA** — a single compromised super-admin credential grants full platform control.
+> 5. **S3 URLs not namespaced** — opens risk of cross-tenant file access.
+
+---
+
+## 7. Scalability Analysis
+
+### Target scale: 1,000 tournaments/month · 500,000 players · 2,000,000 registrations
+
+#### Database
+
+A single PostgreSQL instance with proper indexing can handle 2M registrations comfortably (this is well within Postgres's range). The real risk is **concurrent writes during registration surges**.
+
+- A popular tournament closing in 1 hour could receive 500 concurrent registration attempts.
+- Without `SELECT ... FOR UPDATE` on the category seat counter, you'll oversell seats.
+- **Solution**: Atomic seat decrement using a PostgreSQL advisory lock or optimistic locking (`compare-and-swap` on `registered_count`).
+
+At 2M+ registrations, introduce:
+- **Read replicas** for organiser dashboards and admin analytics
+- **PgBouncer** transaction-mode pooling (mandatory before horizontal backend scaling)
+- **Partitioned `payments` and `registrations` tables** by `created_at` year/month
+
+#### Backend
+
+A NestJS monolith on a single 2-vCPU / 4 GB server will handle ~500 concurrent HTTP requests comfortably (Node.js event loop). Horizontal scaling (multiple instances via Docker + a load balancer like Nginx or AWS ALB) is straightforward since the app is stateless (JWTs, shared Redis session store).
+
+**BullMQ workers should run as a separate Docker service** from the API — this is not mentioned in the document. Mixing API and worker in one process wastes resources and creates noisy-neighbour issues.
+
+#### Redis
+
+A single Redis instance becomes a SPOF at growth stage. Plan for Redis Sentinel (HA) once the platform is revenue-generating. At 500K players, in-memory cache hit rates should be very high for tournament metadata — this will dramatically reduce DB load.
+
+#### Does the architecture support 2M registrations?
+
+**Yes — if the following are added before launch:**
+1. Connection pooling (PgBouncer)
+2. Composite DB indexes
+3. Seat locking mechanism
+4. Async worker separation
+5. Redis HA planning
+
+**What must change at 10× scale (20M registrations):**
+- Shard `registrations` and `payments` tables by `tournament_id` hash or time range
+- Separate read and write DB endpoints in Prisma datasource
+- Move notification delivery to a dedicated queue cluster (not the same Redis as cache)
+- Consider CQRS: separate read models for dashboard queries from write models for registration flow
+
+---
+
+## 8. Missing Components
+
+### Observability stack
+
+**Not mentioned at all.** This is the most critical gap for a production system.
+
+| Component | Tool | Why |
+|---|---|---|
+| Structured logging | **Pino** (NestJS-compatible) | JSON logs parseable by aggregators |
+| Log aggregation | **Grafana Loki** or **Datadog** | Centralised log search across instances |
+| Distributed tracing | **OpenTelemetry + Jaeger/Tempo** | Trace a registration across API → Queue → Worker |
+| Metrics | **Prometheus + Grafana** | API latency, queue depth, DB connection pool usage |
+| Error tracking | **Sentry** | Real-time exception alerts with stack traces |
+| Uptime monitoring | **Better Uptime** or **Checkly** | Alert on API / payment webhook endpoint downtime |
+
+### Background job resilience
+
+- **Dead-letter queue (DLQ)**: BullMQ jobs that fail after max retries must go to a DLQ with alerting. Payment notification jobs in a DLQ = silent revenue loss.
+- **Job deduplication**: Prevent the same Excel export from being enqueued 10 times if an organiser clicks the button rapidly.
+- **Job priority queues**: Payment webhooks must have higher priority than Excel exports.
+
+### CI/CD pipeline
+
+Not mentioned. Minimum required:
+- GitHub Actions (or GitLab CI) pipeline with: lint → unit tests → integration tests → Docker build → push to registry → deploy
+- Environment separation: `dev` → `staging` → `production`
+- Database migrations run via `prisma migrate deploy` in CD pipeline, with rollback strategy documented
+- Secrets management: environment variables via GitHub Secrets → Docker env injection (never committed to repo)
+
+### Backup & disaster recovery
+
+Not mentioned.
+- PostgreSQL: automated daily snapshots + WAL archiving to S3 (point-in-time recovery)
+- Redis: RDB or AOF persistence enabled
+- Recovery Time Objective (RTO) and Recovery Point Objective (RPO) must be defined before launch
+- Test restore procedure quarterly
+
+### Analytics pipeline
+
+The "future analytics" section is aspirational but has no implementation path.
+- Phase 1: Admin dashboard queries hit the primary DB — acceptable short-term.
+- Phase 2: Move analytics to a read replica or a **denormalised reporting schema** (updated by triggers or CDC with Debezium).
+- Phase 3: If "city-wise" and "growth trends" become product features, consider a lightweight OLAP layer (e.g., **ClickHouse** or **DuckDB** for in-process analytics on Postgres exports).
+
+### Email / WhatsApp delivery
+
+- **Email**: SendGrid, Postmark, or AWS SES — not named. Deliverability matters significantly for payment confirmation emails. Use a dedicated sending domain with SPF/DKIM/DMARC.
+- **WhatsApp**: Requires WhatsApp Business API approval (Meta). This is a multi-week process. Must be planned well before Phase 2 feature launch.
+
+### Feature flags
+
+- No mechanism for safely rolling out Phase 2 features to a subset of users.
+- Recommend **Unleash** (self-hosted, free) or **LaunchDarkly** (paid).
+
+---
+
+## 9. Production Readiness Score
+
+| Dimension | Score | Reasoning |
+|---|---|---|
+| **Design Quality** | 6/10 | Domain model is sound; module structure is good; but lacks concrete schema, API contracts, and service boundary definitions |
+| **Scalability** | 5/10 | Scaling strategy is noted at a high level but critical enablers (connection pooling, seat locking, index strategy, worker separation) are absent |
+| **Security** | 5/10 | Baseline measures listed (JWT, HMAC webhooks) but MFA, token revocation, RLS, CORS, and file validation are missing |
+| **Maintainability** | 6/10 | Modular monolith with NestJS is maintainable; Prisma is a good ORM choice; missing CI/CD, observability, and migration strategy hurt this score |
+
+**Overall: 5.5 / 10**
+
+> [!NOTE]
+> This score reflects the document's readiness as a technical specification, not the quality of the idea or the team. The product vision is clear and well-scoped. The document needs one more engineering pass to be a true technical blueprint before development begins.
+
+---
+
+## 10. Required Questions for the Product Owner
+
+---
+
+**PROMPT 1 — Seat Overbooking:**
+> "When a category reaches its player limit (e.g., U10 has 50 seats), and two players submit payment simultaneously — one payment succeeds and one fails — which player gets the seat? Describe the exact business rule: should the system reserve a seat at registration creation, or only after payment confirmation? What happens to the player who paid but doesn't get a seat?"
+
+---
+
+**PROMPT 2 — Refund Policy:**
+> "Describe the complete refund lifecycle for each scenario: (a) a player withdraws before payment, (b) a player withdraws after payment but before the registration deadline, (c) a player withdraws after the registration deadline, (d) an organiser cancels a tournament after players have paid, (e) a tournament is cancelled by the admin due to a policy violation. For each case: who initiates the refund, what is the timeline, and what percentage is returned?"
+
+---
+
+**PROMPT 3 — Player Identity:**
+> "Is a 'Player' always the same person as the logged-in user, or can a parent register a child (who has no account)? If a parent can register a child, how is the child's identity associated with their FIDE ID or national chess federation ID? What prevents a parent from submitting a false date of birth to enter an underage category?"
+
+---
+
+**PROMPT 4 — Organiser Verification:**
+> "What is the organiser verification process? Can any person sign up as an organiser and create tournaments immediately, or is there a manual verification step? What documents are required (e.g., FIDE affiliation, identity proof, academy registration certificate)? Who performs this verification — the Super Admin manually, or an automated check?"
+
+---
+
+**PROMPT 5 — Payment Gateway & Commission:**
+> "Is Razorpay the confirmed payment gateway, or are alternatives under consideration (e.g., PayU, Cashfree, Stripe for international)? How does the platform's commission model work technically: does the platform collect the full payment and transfer a net amount to the organiser (collect-then-disburse model), or does the gateway split payment at source (Razorpay Route / PayU Smart Collect)? This decision has major regulatory (GST, TDS) and technical implications."
+
+---
+
+**PROMPT 6 — Multi-Currency & International Players:**
+> "Will the platform support non-Indian players registering for tournaments? If yes, will fees be charged in INR only, or also in foreign currencies? Are cross-border payment regulations and RBI guidelines considered? This affects payment gateway selection and KYC requirements."
+
+---
+
+**PROMPT 7 — WhatsApp Notification Compliance:**
+> "WhatsApp Business API requires pre-approved message templates and a Meta Business account with phone number verification. Has this process been initiated? If WhatsApp notifications are not available at launch, what is the fallback — email only, or SMS via a provider like Twilio/MSG91? Are players required to opt-in to WhatsApp notifications?"
+
+---
+
+**PROMPT 8 — Tournament Data Ownership:**
+> "If an organiser's account is suspended or deleted, what happens to their tournaments and the player registrations under those tournaments? Players have paid fees and expect to participate — who is responsible for notifying them and processing refunds? Does the platform retain tournament data permanently, or is there a data retention policy?"
+
+---
+
+**PROMPT 9 — FIDE / AICF Integration:**
+> "Phase 3 mentions Swiss pairing and player rankings. Will rankings be sourced from FIDE ratings, AICF (All India Chess Federation) ratings, or maintained internally by the platform? Does the platform need to submit results to FIDE/AICF in a specific data format (e.g., FIDE tournament report)? This affects the player identity model, the results schema, and the reporting module significantly."
+
+---
+
+**PROMPT 10 — Regulatory & Tax Compliance:**
+> "Is the platform liable to collect and remit GST on entry fees or subscription fees? At what revenue threshold does GST registration become mandatory? Does the platform need to issue GST-compliant invoices to organisers? Are there TDS obligations when disbursing collected fees to organiser accounts? These decisions affect the payment model, invoice generation, and the subscription billing architecture."
+
+---
+
+*End of Architecture Review*

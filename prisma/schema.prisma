@@ -1,0 +1,335 @@
+// =============================================================================
+// Chess Tournament Entry Platform — Prisma Schema
+// Version: 2.2 (Final Implementation Baseline)
+// Aligned with: database_migration_plan.md + architecture V2.1 ER diagram
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")     // PgBouncer connection-pooled URL (app runtime)
+  directUrl = env("DIRECT_URL")       // Direct Postgres URL (prisma migrate only — bypasses PgBouncer)
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ORGANIZER
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum TournamentStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  ACTIVE
+  CLOSED
+  REJECTED
+  CANCELLED
+}
+
+enum RegistrationStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum ExportFormat {
+  XLSX
+  CSV
+}
+
+enum ExportStatus {
+  QUEUED
+  PROCESSING
+  DONE
+  FAILED
+  EXPIRED
+}
+
+enum NotificationChannel {
+  EMAIL
+  // SMS and WHATSAPP added in Phase 2 — do not add yet
+}
+
+enum NotificationType {
+  REGISTRATION_CONFIRMED
+  PAYMENT_CONFIRMED
+  TOURNAMENT_APPROVED
+  TOURNAMENT_CANCELLED
+  REMINDER
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum AuditAction {
+  APPROVED
+  REJECTED
+  CANCELLED
+  VERIFIED
+  SUSPENDED
+  PAYMENT_CONFIRMED
+  REFUNDED
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+/// Platform users: Organizers and Super Admin. Players are anonymous (MVP).
+model User {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String      @unique @db.VarChar(255)
+  passwordHash  String      @map("password_hash") @db.VarChar(255)
+  role          UserRole
+  status        UserStatus  @default(PENDING_VERIFICATION)
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  organizer             Organizer?              @relation("UserOrganizer")
+  verifiedOrganizers    Organizer[]             @relation("VerifiedByUser")
+  approvedTournaments   Tournament[]            @relation("ApprovedByUser")
+  cancelledTournaments  Tournament[]            @relation("CancelledByUser")
+  refreshTokenSessions  RefreshTokenSession[]
+  auditLogs             AuditLog[]
+
+  @@map("users")
+}
+
+/// Stores hashed refresh tokens for JWT revocation support.
+model RefreshTokenSession {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  tokenHash   String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz()
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "idx_rts_user")
+  @@index([expiresAt], name: "idx_rts_expires")
+  @@map("refresh_token_sessions")
+}
+
+/// Chess academy / tournament organizer profile, linked 1:1 to a User.
+model Organizer {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String      @unique @map("user_id") @db.Uuid
+  academyName   String      @map("academy_name") @db.VarChar(255)
+  contactPhone  String      @map("contact_phone") @db.VarChar(20)
+  city          String      @db.VarChar(100)
+  state         String?     @db.VarChar(100)
+  description   String?     @db.Text
+  verifiedAt    DateTime?   @map("verified_at") @db.Timestamptz()
+  verifiedById  String?     @map("verified_by") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  user          User        @relation("UserOrganizer", fields: [userId], references: [id], onDelete: Cascade)
+  verifiedBy    User?       @relation("VerifiedByUser", fields: [verifiedById], references: [id])
+  tournaments   Tournament[]
+  exportJobs    ExportJob[]
+
+  @@map("organizers")
+}
+
+/// A chess tournament created by an Organizer. Follows a strict status lifecycle.
+model Tournament {
+  id                    String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizerId           String            @map("organizer_id") @db.Uuid
+  title                 String            @db.VarChar(255)
+  description           String?           @db.Text
+  city                  String            @db.VarChar(100)
+  venue                 String            @db.VarChar(255)
+  startDate             DateTime          @map("start_date") @db.Date
+  endDate               DateTime          @map("end_date") @db.Date
+  registrationDeadline  DateTime          @map("registration_deadline") @db.Date
+  status                TournamentStatus  @default(DRAFT)
+  rejectionReason       String?           @map("rejection_reason") @db.Text
+  cancellationReason    String?           @map("cancellation_reason") @db.Text
+  approvedAt            DateTime?         @map("approved_at") @db.Timestamptz()
+  approvedById          String?           @map("approved_by") @db.Uuid
+  cancelledAt           DateTime?         @map("cancelled_at") @db.Timestamptz()
+  cancelledById         String?           @map("cancelled_by") @db.Uuid
+  createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt             DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  organizer     Organizer      @relation(fields: [organizerId], references: [id])
+  approvedBy    User?          @relation("ApprovedByUser", fields: [approvedById], references: [id])
+  cancelledBy   User?          @relation("CancelledByUser", fields: [cancelledById], references: [id])
+  categories    Category[]
+  registrations Registration[]
+  exportJobs    ExportJob[]
+
+  @@index([organizerId], name: "idx_tournaments_organizer")
+  @@index([status], name: "idx_tournaments_status")
+  @@index([startDate], name: "idx_tournaments_start_date")
+  @@map("tournaments")
+}
+
+/// A competition category within a tournament (e.g., U10, U14, Open).
+/// Seat counter is the atomic target for SELECT FOR UPDATE during registration.
+model Category {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId    String    @map("tournament_id") @db.Uuid
+  name            String    @db.VarChar(50)
+  minAge          Int       @default(0) @map("min_age")
+  maxAge          Int       @default(999) @map("max_age")
+  entryFeePaise   Int       @default(0) @map("entry_fee_paise")
+  maxSeats        Int       @map("max_seats")
+  registeredCount Int       @default(0) @map("registered_count")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  tournament    Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  registrations Registration[]
+
+  @@index([tournamentId], name: "idx_categories_tournament")
+  @@map("categories")
+}
+
+/// A player's registration for a specific tournament category.
+/// entry_number is a human-readable sequential ID (e.g., ECA-2026-000001).
+/// expires_at implements a 2-hour pending payment window.
+model Registration {
+  id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId  String              @map("tournament_id") @db.Uuid
+  categoryId    String              @map("category_id") @db.Uuid
+  playerUserId  String?             @map("player_user_id") @db.Uuid   // nullable — reserved for Phase 2 player accounts
+  playerName    String              @map("player_name") @db.VarChar(255)
+  playerDob     DateTime            @map("player_dob") @db.Date
+  phone         String              @db.VarChar(20)
+  email         String?             @db.VarChar(255)
+  city          String?             @db.VarChar(100)
+  fideId        String?             @map("fide_id") @db.VarChar(20)
+  fideRating    Int?                @map("fide_rating")
+  status        RegistrationStatus  @default(PENDING_PAYMENT)
+  entryNumber   String              @unique @map("entry_number") @db.VarChar(30)
+  registeredAt  DateTime            @default(now()) @map("registered_at") @db.Timestamptz()
+  confirmedAt   DateTime?           @map("confirmed_at") @db.Timestamptz()
+  expiresAt     DateTime?           @map("expires_at") @db.Timestamptz()  // PENDING_PAYMENT entries expire after 2h
+
+  // Relations
+  tournament        Tournament        @relation(fields: [tournamentId], references: [id])
+  category          Category          @relation(fields: [categoryId], references: [id])
+  payment           Payment?
+  notificationLogs  NotificationLog[]
+
+  @@index([tournamentId], name: "idx_reg_tournament")
+  @@index([tournamentId, status], name: "idx_reg_tournament_status")
+  @@index([phone, tournamentId], name: "idx_reg_phone_tournament")
+  // Partial index for expiry cleanup job — only PENDING_PAYMENT rows
+  @@map("registrations")
+}
+
+/// Razorpay payment linked 1:1 to a Registration.
+/// All monetary amounts in paise (integer) — never floating point.
+model Payment {
+  id                  String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  registrationId      String        @unique @map("registration_id") @db.Uuid
+  razorpayOrderId     String        @unique @map("razorpay_order_id") @db.VarChar(100)
+  razorpayPaymentId   String?       @unique @map("razorpay_payment_id") @db.VarChar(100)  // null until captured
+  amountPaise         Int           @map("amount_paise")
+  currency            String        @default("INR") @db.VarChar(10)
+  status              PaymentStatus @default(INITIATED)
+  gatewayResponse     Json?         @map("gateway_response")  // raw Razorpay webhook payload
+  createdAt           DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt           DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  // Relations
+  registration  Registration  @relation(fields: [registrationId], references: [id])
+
+  @@index([razorpayOrderId], name: "idx_pay_order_id")
+  @@index([razorpayPaymentId], name: "idx_pay_payment_id")
+  @@index([registrationId], name: "idx_pay_registration")
+  // Partial index for reconciliation job — only unresolved payments
+  @@map("payments")
+}
+
+/// Immutable audit trail for sensitive state transitions (tournament approval,
+/// organizer verification, payment confirmation, refunds, cancellations).
+model AuditLog {
+  id            String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  entityType    String      @map("entity_type") @db.VarChar(50)
+  entityId      String      @map("entity_id") @db.Uuid
+  action        AuditAction
+  oldValue      Json?       @map("old_value")
+  newValue      Json?       @map("new_value")
+  performedById String?     @map("performed_by") @db.Uuid
+  performedAt   DateTime    @default(now()) @map("performed_at") @db.Timestamptz()
+
+  // Relations
+  performedBy   User?       @relation(fields: [performedById], references: [id])
+
+  @@index([entityType, entityId], name: "idx_audit_entity")
+  @@index([performedById], name: "idx_audit_performer")
+  @@index([performedAt(sort: Desc)], name: "idx_audit_at")
+  @@map("audit_log")
+}
+
+/// Tracks notification delivery per registration. Used for debugging and
+/// preventing duplicate sends.
+model NotificationLog {
+  id              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  registrationId  String?             @map("registration_id") @db.Uuid
+  channel         NotificationChannel @default(EMAIL)
+  type            NotificationType
+  status          NotificationStatus  @default(QUEUED)
+  sentAt          DateTime?           @map("sent_at") @db.Timestamptz()
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz()
+
+  // Relations
+  registration    Registration?       @relation(fields: [registrationId], references: [id])
+
+  @@index([registrationId], name: "idx_notif_registration")
+  @@map("notification_log")
+}
+
+/// Tracks async Excel/CSV export jobs for organizers. Files are stored in R2
+/// and expire after 30 days (enforced by cleanup worker job).
+model ExportJob {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizerId   String        @map("organizer_id") @db.Uuid
+  tournamentId  String        @map("tournament_id") @db.Uuid
+  format        ExportFormat  @default(XLSX)
+  status        ExportStatus  @default(QUEUED)
+  storageKey    String?       @map("storage_key") @db.VarChar(500)   // R2 object key
+  requestedAt   DateTime      @default(now()) @map("requested_at") @db.Timestamptz()
+  completedAt   DateTime?     @map("completed_at") @db.Timestamptz()
+  expiresAt     DateTime?     @map("expires_at") @db.Timestamptz()   // 30 days after completedAt
+
+  // Relations
+  organizer     Organizer     @relation(fields: [organizerId], references: [id])
+  tournament    Tournament    @relation(fields: [tournamentId], references: [id])
+
+  @@index([organizerId], name: "idx_export_organizer")
+  @@index([tournamentId], name: "idx_export_tournament")
+  // Partial index for cleanup job — only completed exports approaching expiry
+  @@map("export_jobs")
+}
