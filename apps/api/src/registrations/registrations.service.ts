@@ -1,10 +1,12 @@
 import {
-    Injectable, ConflictException, NotFoundException,
-    BadRequestException, HttpException, HttpStatus,
+    Injectable,
+    ConflictException,
+    NotFoundException,
+    BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
-import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
+import { PaymentsService } from '../payments/payments.service';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
 import { differenceInYears } from 'date-fns';
 
@@ -13,6 +15,7 @@ export class RegistrationsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly queue: QueueService,
+        private readonly payments: PaymentsService,
     ) { }
 
     async register(tournamentId: string, categoryId: string, dto: CreateRegistrationDto) {
@@ -26,24 +29,23 @@ export class RegistrationsService {
             throw new ConflictException('TOURNAMENT_NOT_ACCEPTING');
         }
 
-        const category = tournament.categories.find(c => c.id === categoryId);
+        const category = tournament.categories.find((c) => c.id === categoryId);
         if (!category) throw new NotFoundException('NOT_FOUND');
 
-        // 2. Age validation
+        // 2. Age validation (age at tournament start date)
         const ageAtTournament = differenceInYears(tournament.startDate, new Date(dto.playerDob));
         if (ageAtTournament < category.minAge || ageAtTournament > category.maxAge) {
-            throw new BadRequestException('VALIDATION_ERROR: Age does not meet category requirements');
+            throw new BadRequestException('Age does not meet category requirements');
         }
 
-        // 3. Duplicate detection
+        // 3. Duplicate detection — same phone in same tournament (non-cancelled)
         const duplicate = await this.prisma.registration.findFirst({
             where: { tournamentId, phone: dto.phone, status: { not: 'CANCELLED' } },
         });
         if (duplicate) throw new ConflictException('DUPLICATE_REGISTRATION');
 
-        // 4. Seat locking + insert — all inside a serializable transaction
+        // 4. Seat locking + insert — SELECT FOR UPDATE prevents concurrent overselling
         const registration = await this.prisma.$transaction(async (tx) => {
-            // SELECT FOR UPDATE on the category row to prevent concurrent overselling
             const locked = await tx.$queryRaw<Array<{ registered_count: number; max_seats: number }>>`
         SELECT registered_count, max_seats FROM categories WHERE id = ${categoryId} FOR UPDATE
       `;
@@ -68,7 +70,7 @@ export class RegistrationsService {
                     fideId: dto.fideId,
                     fideRating: dto.fideRating,
                     entryNumber,
-                    expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2 hours
+                    expiresAt: new Date(Date.now() + 2 * 60 * 60 * 1000), // 2-hour payment window
                 },
             });
 
@@ -80,15 +82,19 @@ export class RegistrationsService {
             return reg;
         });
 
-        // 5. Create Razorpay order (handled by PaymentsService — injected or called here)
-        //    Returning stub — PaymentsService.createOrder() called in full implementation
+        // 5. Create Razorpay order and persist Payment record
+        const paymentDetails = await this.payments.createOrder(
+            registration.id,
+            category.entryFeePaise,
+        );
+
         return {
             data: {
                 registration_id: registration.id,
                 entry_number: registration.entryNumber,
                 status: 'PENDING_PAYMENT',
                 expires_at: registration.expiresAt,
-                payment: { /* populated by PaymentsService */ },
+                payment: paymentDetails,
             },
         };
     }
