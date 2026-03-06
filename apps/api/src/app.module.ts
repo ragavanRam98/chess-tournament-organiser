@@ -11,6 +11,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AdminModule } from './admin/admin.module';
 import { QueueModule } from './queue/queue.module';
 import { StorageModule } from './storage/storage.module';
+import { HealthController } from './health/health.controller';
 
 @Module({
     imports: [
@@ -32,5 +33,6 @@ import { StorageModule } from './storage/storage.module';
         NotificationsModule,
         AdminModule,
     ],
+    controllers: [HealthController],
 })
 export class AppModule { }

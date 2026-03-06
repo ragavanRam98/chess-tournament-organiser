@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const cookieParser = require('cookie-parser') as () => unknown;
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import cookieParser = require('cookie-parser');
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
@@ -13,6 +13,9 @@ async function bootstrap() {
 
     // ── Global prefix ────────────────────────────────────────────────────────────
     app.setGlobalPrefix('api/v1');
+
+    // ── Exception filter — uniform error shape ────────────────────────────────────
+    app.useGlobalFilters(new GlobalExceptionFilter());
 
     // ── Cookie parser (needed for httpOnly refresh token cookie) ─────────────────
     app.use(cookieParser());
