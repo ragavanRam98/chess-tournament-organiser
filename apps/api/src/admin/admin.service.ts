@@ -1,15 +1,165 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { QueueService } from '../queue/queue.service';
+import { TournamentsService } from '../tournaments/tournaments.service';
+import { TournamentStatus } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
-    constructor(private readonly prisma: PrismaService, private readonly queue: QueueService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly tournamentsService: TournamentsService,
+    ) { }
 
-    async listTournaments(query: any) { /* TODO: paginated, all statuses */ throw new Error('Not implemented'); }
-    async updateTournamentStatus(id: string, body: any, actingUserId: string) { /* TODO: transition + audit_log + notify */ throw new Error('Not implemented'); }
-    async listOrganizers(query: any) { /* TODO: paginated */ throw new Error('Not implemented'); }
-    async verifyOrganizer(id: string, body: any) { /* TODO: PENDING_VERIFICATION → ACTIVE, set verified_at */ throw new Error('Not implemented'); }
-    async analytics() { /* TODO: aggregate counts */ throw new Error('Not implemented'); }
-    async auditLogs(query: any) { /* TODO: filterable, cursor-paginated */ throw new Error('Not implemented'); }
+    // ── Tournaments ────────────────────────────────────────────────────────────
+
+    async listTournaments(query: unknown) {
+        const q = query as Record<string, string> | undefined;
+        const page = Math.max(1, parseInt(q?.['page'] ?? '1', 10));
+        const limit = Math.min(50, Math.max(1, parseInt(q?.['limit'] ?? '20', 10)));
+        const skip = (page - 1) * limit;
+        const status = q?.['status'] as TournamentStatus | undefined;
+
+        const where = status ? { status } : {};
+
+        const [tournaments, total] = await this.prisma.$transaction([
+            this.prisma.tournament.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+                include: {
+                    organizer: { select: { academyName: true, city: true } },
+                    categories: { select: { id: true, name: true } },
+                },
+            }),
+            this.prisma.tournament.count({ where }),
+        ]);
+
+        return { data: tournaments, meta: { total, page, limit } };
+    }
+
+    async updateTournamentStatus(id: string, body: unknown, actingUserId: string) {
+        const b = body as { status: string; reason?: string };
+        return this.tournamentsService.applyStatusTransition(
+            id,
+            b.status as TournamentStatus,
+            actingUserId,
+            b.reason,
+        );
+    }
+
+    // ── Organizers ─────────────────────────────────────────────────────────────
+
+    async listOrganizers(query: unknown) {
+        const q = query as Record<string, string> | undefined;
+        const page = Math.max(1, parseInt(q?.['page'] ?? '1', 10));
+        const limit = Math.min(50, Math.max(1, parseInt(q?.['limit'] ?? '20', 10)));
+        const skip = (page - 1) * limit;
+
+        const [organizers, total] = await this.prisma.$transaction([
+            this.prisma.organizer.findMany({
+                orderBy: { createdAt: 'desc' },
+                skip,
+                take: limit,
+                include: {
+                    user: { select: { email: true, status: true, createdAt: true } },
+                },
+            }),
+            this.prisma.organizer.count(),
+        ]);
+
+        return { data: organizers, meta: { total, page, limit } };
+    }
+
+    async verifyOrganizer(id: string, body: unknown) {
+        const organizer = await this.prisma.organizer.findUnique({
+            where: { id },
+            include: { user: true },
+        });
+        if (!organizer) throw new NotFoundException('NOT_FOUND');
+        if (organizer.user.status === 'ACTIVE') {
+            throw new ConflictException('Organizer is already verified');
+        }
+
+        const b = body as { actingUserId: string };
+
+        await this.prisma.$transaction([
+            this.prisma.user.update({
+                where: { id: organizer.userId },
+                data: { status: 'ACTIVE' },
+            }),
+            this.prisma.organizer.update({
+                where: { id },
+                data: { verifiedAt: new Date(), verifiedById: b.actingUserId },
+            }),
+            this.prisma.auditLog.create({
+                data: {
+                    entityType: 'organizer',
+                    entityId: id,
+                    action: 'VERIFIED',
+                    oldValue: { status: organizer.user.status } as any,
+                    newValue: { status: 'ACTIVE' } as any,
+                    performedById: b.actingUserId,
+                },
+            }),
+        ]);
+
+        return { data: { id, status: 'ACTIVE' } };
+    }
+
+    // ── Analytics ──────────────────────────────────────────────────────────────
+
+    async analytics() {
+        const [
+            totalTournaments,
+            activeTournaments,
+            pendingApproval,
+            totalOrganizers,
+            pendingOrganizers,
+            totalRegistrations,
+            confirmedRegistrations,
+        ] = await this.prisma.$transaction([
+            this.prisma.tournament.count(),
+            this.prisma.tournament.count({ where: { status: 'ACTIVE' } }),
+            this.prisma.tournament.count({ where: { status: 'PENDING_APPROVAL' } }),
+            this.prisma.organizer.count(),
+            this.prisma.user.count({ where: { role: 'ORGANIZER', status: 'PENDING_VERIFICATION' } }),
+            this.prisma.registration.count(),
+            this.prisma.registration.count({ where: { status: 'CONFIRMED' } }),
+        ]);
+
+        return {
+            data: {
+                tournaments: { total: totalTournaments, active: activeTournaments, pending_approval: pendingApproval },
+                organizers: { total: totalOrganizers, pending_verification: pendingOrganizers },
+                registrations: { total: totalRegistrations, confirmed: confirmedRegistrations },
+            },
+        };
+    }
+
+    // ── Audit Logs ─────────────────────────────────────────────────────────────
+
+    async auditLogs(query: unknown) {
+        const q = query as Record<string, string> | undefined;
+        const page = Math.max(1, parseInt(q?.['page'] ?? '1', 10));
+        const limit = Math.min(100, Math.max(1, parseInt(q?.['limit'] ?? '50', 10)));
+        const skip = (page - 1) * limit;
+
+        const where = q?.['entityType'] ? { entityType: q['entityType'] } : {};
+
+        const [logs, total] = await this.prisma.$transaction([
+            this.prisma.auditLog.findMany({
+                where,
+                orderBy: { performedAt: 'desc' },
+                skip,
+                take: limit,
+                include: {
+                    performedBy: { select: { email: true, role: true } },
+                },
+            }),
+            this.prisma.auditLog.count({ where }),
+        ]);
+
+        return { data: logs, meta: { total, page, limit } };
+    }
 }
