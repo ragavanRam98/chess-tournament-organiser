@@ -1,5 +1,5 @@
 import {
-    Injectable, BadRequestException, ConflictException, Logger,
+    Injectable, BadRequestException, Logger,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
@@ -32,7 +32,18 @@ export class PaymentsService {
             .update(rawBody)
             .digest('hex');
 
-        if (!crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature ?? ''))) {
+        // timingSafeEqual throws RangeError if buffers differ in byte length — treat as mismatch
+        let signatureValid = false;
+        try {
+            signatureValid = crypto.timingSafeEqual(
+                Buffer.from(expected),
+                Buffer.from(signature ?? ''),
+            );
+        } catch {
+            signatureValid = false;
+        }
+
+        if (!signatureValid) {
             this.logger.warn('Webhook HMAC mismatch — rejecting');
             throw new BadRequestException('Invalid signature');
         }
@@ -77,5 +88,3 @@ export class PaymentsService {
         return { status: 'ok' };
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────

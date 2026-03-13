@@ -7,6 +7,7 @@ import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { OrganizerOwnershipGuard } from '../auth/guards/organizer-ownership.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller()
@@ -30,23 +31,23 @@ export class TournamentsController {
         return this.tournamentsService.create(req.user.organizerId, dto);
     }
 
+    /** S1-4: OrganizerOwnershipGuard ensures the tournament belongs to the requesting organizer */
     @Get('organizer/tournaments/:id')
-    @UseGuards(JwtAuthGuard, RolesGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard, OrganizerOwnershipGuard)
     @Roles('ORGANIZER')
     findOne(@Req() req: any, @Param('id') id: string) {
         return this.tournamentsService.findOneForOrganizer(id, req.user.organizerId);
     }
 
     @Patch('organizer/tournaments/:id')
-    @UseGuards(JwtAuthGuard, RolesGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard, OrganizerOwnershipGuard)
     @Roles('ORGANIZER')
     update(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateTournamentDto) {
         return this.tournamentsService.update(id, req.user.organizerId, dto);
     }
 
-    /** POST /organizer/tournaments/:id/submit — submit DRAFT for admin approval */
     @Post('organizer/tournaments/:id/submit')
-    @UseGuards(JwtAuthGuard, RolesGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard, OrganizerOwnershipGuard)
     @Roles('ORGANIZER')
     @HttpCode(200)
     submit(@Req() req: any, @Param('id') id: string) {

@@ -1,13 +1,19 @@
-import { Controller, Post, Get, Param, Body } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, HttpCode } from '@nestjs/common';
 import { RegistrationsService } from './registrations.service';
 import { CreateRegistrationDto } from './dto/create-registration.dto';
+import { RegistrationRateLimitGuard } from './guards/registration-rate-limit.guard';
 
 @Controller()
 export class RegistrationsController {
     constructor(private readonly registrationsService: RegistrationsService) { }
 
-    /** POST /tournaments/:id/categories/:catId/register — public, no auth */
+    /**
+     * POST /tournaments/:id/categories/:catId/register — public, no auth
+     * S3-4: RegistrationRateLimitGuard enforces 3 attempts/hour per phone per tournament
+     */
     @Post('tournaments/:id/categories/:catId/register')
+    @UseGuards(RegistrationRateLimitGuard)
+    @HttpCode(201)
     register(
         @Param('id') tournamentId: string,
         @Param('catId') categoryId: string,
@@ -22,5 +28,3 @@ export class RegistrationsController {
         return this.registrationsService.getStatus(entryNumber);
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
