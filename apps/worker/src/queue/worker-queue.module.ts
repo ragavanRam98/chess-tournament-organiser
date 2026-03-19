@@ -41,6 +41,18 @@ export class DlqService implements OnModuleInit {
       },
     );
 
+    // S6-4: CLEANUP_EXPORT_FILES — daily at 2 AM IST (20:30 UTC previous day)
+    await this.exportsQueue.add(
+      JOB_NAMES.CLEANUP_EXPORT_FILES,
+      {},
+      {
+        repeat: { pattern: '30 20 * * *' }, // 20:30 UTC = 2:00 AM IST
+        jobId: 'cron:cleanup-exports',
+        removeOnFail: false,
+        removeOnComplete: true,
+      },
+    );
+
     // S5-5: Log DLQ depth for each queue on startup
     const queues = [
       { name: QUEUE_NAMES.PAYMENTS, q: this.paymentsQueue },
