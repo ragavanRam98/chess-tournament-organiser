@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { SentryExceptionFilter } from './common/filters/sentry-exception.filter';
 import cookieParser = require('cookie-parser');
 
 async function bootstrap() {
@@ -11,11 +12,14 @@ async function bootstrap() {
         bufferLogs: true,
     });
 
+    // S7-4: Use Pino logger as the NestJS logger
+    app.useLogger(app.get(Logger));
+
     // ── Global prefix ────────────────────────────────────────────────────────────
     app.setGlobalPrefix('api/v1');
 
-    // ── Exception filter — uniform error shape ────────────────────────────────────
-    app.useGlobalFilters(new GlobalExceptionFilter());
+    // ── Exception filter — S7-5: Sentry-aware uniform error shape ─────────────────
+    app.useGlobalFilters(new SentryExceptionFilter());
 
     // ── Cookie parser (needed for httpOnly refresh token cookie) ─────────────────
     app.use(cookieParser());

@@ -1,5 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule, RequestMethod } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -14,10 +15,23 @@ import { StorageModule } from './storage/storage.module';
 import { HealthController } from './health/health.controller';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 
+// S7-4: Pino structured logging
+import { LoggerConfigModule } from './common/logger/logger.module';
+// S7-5: Sentry error tracking
+import { SentryModule } from './common/sentry/sentry.module';
+// S7-6: Prometheus metrics
+import { MetricsModule } from './metrics/metrics.module';
+import { MetricsInterceptor } from './metrics/metrics.interceptor';
+
 @Module({
     imports: [
         // ── Config (loads .env) ──────────────────────────────────────────────────
         ConfigModule.forRoot({ isGlobal: true }),
+
+        // ── Observability ────────────────────────────────────────────────────────
+        LoggerConfigModule,  // S7-4: Pino structured logging
+        SentryModule,        // S7-5: Sentry error tracking
+        MetricsModule,       // S7-6: Prometheus /metrics endpoint
 
         // ── Infrastructure ────────────────────────────────────────────────────────
         PrismaModule,
@@ -35,6 +49,10 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
         AdminModule,
     ],
     controllers: [HealthController],
+    providers: [
+        // S7-6: Global HTTP metrics interceptor
+        { provide: APP_INTERCEPTOR, useClass: MetricsInterceptor },
+    ],
 })
 export class AppModule implements NestModule {
     configure(consumer: MiddlewareConsumer) {
