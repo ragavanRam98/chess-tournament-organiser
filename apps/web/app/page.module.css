@@ -1,0 +1,77 @@
+.tournamentCard {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-light));
+  color: var(--text-inverse);
+  font-size: 0.85rem;
+}
+
+.cardCity {
+  font-weight: 500;
+}
+
+.cardTitle {
+  font-size: 1.2rem;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.cardOrganizer {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.cardMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 14px;
+}
+
+.categoryPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pill {
+  padding: 3px 10px;
+  background: var(--brand-blue-glow);
+  color: var(--brand-blue);
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: 'Inter', sans-serif;
+}
+
+.seatInfo {
+  margin-bottom: 16px;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.price {
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  color: var(--brand-emerald);
+  font-size: 0.95rem;
+}
