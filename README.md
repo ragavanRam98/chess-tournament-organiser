@@ -2,6 +2,8 @@
 
 A modern, full-stack chess tournament management platform built for Indian chess academies. Organizers can create FIDE-rated tournaments, manage registrations, and track payments — while participants can browse, register, and pay seamlessly.
 
+> 🎬 **Demo Video**: See the full platform walk-through in [`docs/full-platform-demo.webp`](docs/full-platform-demo.webp)
+
 ---
 
 ## 📸 Screenshots
