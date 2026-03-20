@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, getAccessToken } from '@/lib/api';
+import { api, getAccessToken, setAccessToken } from '@/lib/api';
 
 interface Tournament {
   id: string; title: string; city: string; venue: string;
@@ -14,22 +14,97 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+/* ─── Inline Admin Login ────────────────────────────────────────────── */
+function AdminLogin({ onLogin }: { onLogin: () => void }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      const res = await api.post<{ access_token: string }>('/auth/login', { email, password });
+      setAccessToken(res.data.access_token);
+      onLogin();
+    } catch (err: any) {
+      setError(err?.error?.message ?? 'Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: 'calc(100dvh - var(--header-height))', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+        <div className="animate-fadeInUp" style={{ textAlign: 'center', marginBottom: 40 }}>
+          <div style={{
+            width: 72, height: 72, borderRadius: 'var(--radius-lg)', margin: '0 auto 16px',
+            background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem',
+            boxShadow: '0 8px 24px rgba(185,28,28,0.3)', color: '#fff',
+          }}>🛡</div>
+          <h1 style={{ fontSize: '1.5rem', marginBottom: 4 }}>Admin Portal</h1>
+          <p style={{ color: 'var(--text-muted)' }}>Sign in with super-admin credentials</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="card card-body animate-fadeInUp delay-100" style={{ padding: 32 }}>
+          {error && (
+            <div style={{ padding: '12px 16px', background: 'rgba(244,63,94,0.08)', borderRadius: 'var(--radius-md)', color: 'var(--brand-rose)', marginBottom: 20, fontSize: '0.9rem', fontWeight: 500 }}>
+              {error}
+            </div>
+          )}
+          <div className="form-group" style={{ marginBottom: 20 }}>
+            <label className="form-label">Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="form-input" placeholder="admin@easychess.local" autoFocus />
+          </div>
+          <div className="form-group" style={{ marginBottom: 28 }}>
+            <label className="form-label">Password</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="form-input" placeholder="••••••••" />
+          </div>
+          <button type="submit" disabled={loading} className="btn btn-primary btn-lg" style={{ width: '100%', background: 'linear-gradient(135deg, #dc2626, #b91c1c)' }}>
+            {loading ? 'Signing in...' : 'Sign In as Admin'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Admin Dashboard ───────────────────────────────────────────────── */
 export default function AdminDashboard() {
+  const [authed, setAuthed] = useState(false);
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!getAccessToken()) { window.location.href = '/organizer/login'; return; }
-
+  const loadTournaments = () => {
+    setLoading(true);
     api.get<any>('/admin/tournaments?status=PENDING_APPROVAL')
       .then(res => {
         const data = res.data;
         setTournaments(Array.isArray(data) ? data : data?.data ?? []);
+        setAuthed(true);
       })
-      .catch(() => {})
+      .catch(() => {
+        // If 403, token is wrong role → show login
+        setAuthed(false);
+      })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    if (getAccessToken()) {
+      loadTournaments();
+    } else {
+      setLoading(false);
+    }
   }, []);
+
+  if (!authed && !loading) {
+    return <AdminLogin onLogin={loadTournaments} />;
+  }
 
   const handleAction = async (id: string, status: 'ACTIVE' | 'REJECTED', reason?: string) => {
     setActionLoading(id);
@@ -85,7 +160,6 @@ export default function AdminDashboard() {
                     <span>🏛 {t.venue}</span>
                   </div>
 
-                  {/* Categories */}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {t.categories.map((c, j) => (
                       <span key={j} style={{

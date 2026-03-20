@@ -1,25 +1,19 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { SentryExceptionFilter } from './common/filters/sentry-exception.filter';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import cookieParser = require('cookie-parser');
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
-        // rawBody: true enables reading raw body for Razorpay webhook HMAC verification
         rawBody: true,
-        bufferLogs: true,
     });
-
-    // S7-4: Use Pino logger as the NestJS logger
-    app.useLogger(app.get(Logger));
 
     // ── Global prefix ────────────────────────────────────────────────────────────
     app.setGlobalPrefix('api/v1');
 
-    // ── Exception filter — S7-5: Sentry-aware uniform error shape ─────────────────
-    app.useGlobalFilters(new SentryExceptionFilter());
+    // ── Exception filter — uniform error shape ────────────────────────────────────
+    app.useGlobalFilters(new GlobalExceptionFilter());
 
     // ── Cookie parser (needed for httpOnly refresh token cookie) ─────────────────
     app.use(cookieParser());
@@ -27,9 +21,9 @@ async function bootstrap() {
     // ── Validation pipe — enforces all DTOs globally ──────────────────────────────
     app.useGlobalPipes(
         new ValidationPipe({
-            whitelist: true,        // strip unknown properties
+            whitelist: true,
             forbidNonWhitelisted: true,
-            transform: true,        // auto-transform plain objects to DTO class instances
+            transform: true,
             transformOptions: { enableImplicitConversion: true },
         }),
     );

@@ -11,12 +11,23 @@ export interface ApiError {
   error: { code: string | number; message: string | string[]; path: string; timestamp: string };
 }
 
-/* ─── Token store (in-memory, never persisted to localStorage) ─────── */
+/* ─── Token store (sessionStorage — survives navigations, cleared on tab close) */
 
-let accessToken: string | null = null;
+const TOKEN_KEY = 'eca_access_token';
 
-export function setAccessToken(token: string | null) { accessToken = token; }
-export function getAccessToken() { return accessToken; }
+export function setAccessToken(token: string | null) {
+  if (typeof window === 'undefined') return;
+  if (token) {
+    sessionStorage.setItem(TOKEN_KEY, token);
+  } else {
+    sessionStorage.removeItem(TOKEN_KEY);
+  }
+}
+
+export function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return sessionStorage.getItem(TOKEN_KEY);
+}
 
 /* ─── Core fetch wrapper ──────────────────────────────────────────── */
 
@@ -31,8 +42,9 @@ export async function apiFetch<T>(
     ...(options.headers as Record<string, string>),
   };
 
-  if (accessToken) {
-    headers['Authorization'] = `Bearer ${accessToken}`;
+  const token = getAccessToken();
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const res = await fetch(url, {
@@ -42,10 +54,11 @@ export async function apiFetch<T>(
   });
 
   // Handle 401 — try token refresh once
-  if (res.status === 401 && accessToken) {
+  if (res.status === 401 && token) {
     const refreshed = await tryRefreshToken();
     if (refreshed) {
-      headers['Authorization'] = `Bearer ${accessToken}`;
+      const newToken = getAccessToken();
+      headers['Authorization'] = `Bearer ${newToken}`;
       const retryRes = await fetch(url, { ...options, headers, credentials: 'include' });
       if (retryRes.ok) return retryRes.json();
       throw await parseError(retryRes);

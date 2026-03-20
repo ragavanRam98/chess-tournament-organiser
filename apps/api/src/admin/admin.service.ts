@@ -29,7 +29,7 @@ export class AdminService {
                 take: limit,
                 include: {
                     organizer: { select: { academyName: true, city: true } },
-                    categories: { select: { id: true, name: true } },
+                    categories: { select: { id: true, name: true, maxSeats: true } },
                 },
             }),
             this.prisma.tournament.count({ where }),
