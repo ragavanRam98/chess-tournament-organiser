@@ -1,56 +1,59 @@
-version: '3.9'
+# ═══════════════════════════════════════════════════════════════════════════
+# docker-compose.dev.yml — Local development stack
+# Run: docker compose -f docker-compose.dev.yml up -d
+# ═══════════════════════════════════════════════════════════════════════════
 
 services:
+  # ── PostgreSQL 16 ──────────────────────────────────────────────────────
   postgres:
-    image: postgres:15-alpine
-    container_name: chess_postgres
+    image: postgres:16-alpine
+    container_name: chess-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: chess
+      POSTGRES_PASSWORD: chess_dev_password
       POSTGRES_DB: chess_tournament
     ports:
-      - '5432:5432'
+      - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U postgres']
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: chess_redis
-    ports:
-      - '6379:6379'
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  minio:
-    image: minio/minio:latest
-    container_name: chess_minio
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - '9000:9000'  # S3 API
-      - '9001:9001'  # Web console (http://localhost:9001)
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      test: ["CMD-SHELL", "pg_isready -U chess -d chess_tournament"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ── Redis 7 (BullMQ) ──────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: chess-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── MinIO (S3-compatible object storage for R2 dev) ────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: chess-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Console
+    volumes:
+      - miniodata:/data
+
 volumes:
-  postgres_data:
-  redis_data:
-  minio_data:
+  pgdata:
+  redisdata:
+  miniodata:

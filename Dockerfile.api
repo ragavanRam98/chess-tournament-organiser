@@ -1,0 +1,53 @@
+# ── Stage 1: Build ─────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy workspace root files
+COPY package.json package-lock.json turbo.json ./
+COPY prisma ./prisma/
+
+# Copy API package
+COPY apps/api ./apps/api/
+
+# Copy shared packages (if any)
+COPY packages ./packages/ 2>/dev/null || true
+
+# Install ALL deps (including devDependencies for build)
+RUN npm ci --ignore-scripts && npx prisma generate
+
+# Build the API
+WORKDIR /app/apps/api
+RUN npm run build
+
+# ── Stage 2: Production ───────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
+
+WORKDIR /app
+
+# Copy root package files for workspaces
+COPY package.json package-lock.json ./
+COPY prisma ./prisma/
+
+# Install production deps only
+RUN npm ci --omit=dev --ignore-scripts && npx prisma generate
+
+# Copy built API
+COPY --from=builder /app/apps/api/dist ./apps/api/dist/
+COPY apps/api/package.json ./apps/api/
+
+# Switch to non-root user
+USER appuser
+
+ENV NODE_ENV=production
+ENV PORT=3001
+
+EXPOSE 3001
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
+  CMD wget -q --spider http://localhost:3001/api/v1/health || exit 1
+
+CMD ["node", "apps/api/dist/main.js"]
