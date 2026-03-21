@@ -1,4 +1,5 @@
 import { Controller, Post, Req, Res, Headers, HttpCode } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { PaymentsService } from './payments.service';
 
@@ -9,10 +10,10 @@ export class PaymentsController {
     /**
      * POST /payments/webhook
      * Auth: None. Protected by HMAC-SHA256 signature ONLY.
-     * CRITICAL: rawBody must be read before express.json() middleware.
-     * Must respond within 3 seconds (Razorpay timeout).
+     * Throttle: Skipped — Razorpay sends webhooks in bursts.
      */
     @Post('webhook')
+    @SkipThrottle()
     @HttpCode(200)
     async webhook(
         @Req() req: Request,

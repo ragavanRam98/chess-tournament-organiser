@@ -2,12 +2,29 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import helmet from 'helmet';
 import cookieParser = require('cookie-parser');
 
 async function bootstrap() {
     const app = await NestFactory.create(AppModule, {
         rawBody: true,
     });
+
+    // ── Security headers (helmet) — MUST be before all other middleware ──────────
+    app.use(
+        helmet({
+            contentSecurityPolicy: {
+                directives: {
+                    defaultSrc: ["'self'"],
+                    scriptSrc: ["'self'", 'checkout.razorpay.com'],
+                    frameSrc: ["'self'", 'api.razorpay.com'],
+                    imgSrc: ["'self'", 'data:', '*.razorpay.com'],
+                    connectSrc: ["'self'"],
+                },
+            },
+            crossOriginEmbedderPolicy: false,
+        }),
+    );
 
     // ── Global prefix ────────────────────────────────────────────────────────────
     app.setGlobalPrefix('api/v1');

@@ -9,9 +9,9 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
-  background: linear-gradient(135deg, var(--brand-navy), var(--brand-navy-light));
-  color: var(--text-inverse);
+  padding: 11px 20px;
+  background: var(--ks-black);
+  color: var(--ks-white);
   font-size: 0.85rem;
 }
 
@@ -20,14 +20,15 @@
 }
 
 .cardTitle {
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   margin-bottom: 4px;
-  color: var(--text-primary);
+  color: var(--ks-text-primary);
+  font-weight: 700;
 }
 
 .cardOrganizer {
   font-size: 0.85rem;
-  color: var(--text-muted);
+  color: var(--ks-text-muted);
   margin-bottom: 12px;
 }
 
@@ -49,8 +50,8 @@
 
 .pill {
   padding: 3px 10px;
-  background: var(--brand-blue-glow);
-  color: var(--brand-blue);
+  background: rgba(196, 30, 30, 0.07);
+  color: var(--ks-red);
   border-radius: var(--radius-full);
   font-size: 0.75rem;
   font-weight: 600;
@@ -66,12 +67,12 @@
   align-items: center;
   justify-content: space-between;
   padding-top: 12px;
-  border-top: 1px solid var(--border-subtle);
+  border-top: 1px solid var(--ks-border);
 }
 
 .price {
   font-weight: 700;
   font-family: 'Inter', sans-serif;
-  color: var(--brand-emerald);
+  color: var(--ks-text-primary);
   font-size: 0.95rem;
 }

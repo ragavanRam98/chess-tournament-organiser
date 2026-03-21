@@ -3,6 +3,6 @@
 }
 
 .tournamentRow:hover {
-  border-color: var(--brand-blue);
-  box-shadow: var(--shadow-md), 0 0 0 1px var(--brand-blue-glow);
+  border-color: var(--ks-red);
+  box-shadow: var(--shadow-md), 0 0 0 1px rgba(196,30,30,0.08);
 }

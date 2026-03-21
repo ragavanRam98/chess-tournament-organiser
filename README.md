@@ -1,6 +1,8 @@
-# ♔ Easy Chess Academy — Tournament Organiser
+# ♔ KingSquare — Tournament management for Indian chess
 
-A modern, full-stack chess tournament management platform built for Indian chess academies. Organizers can create FIDE-rated tournaments, manage registrations, and track payments — while participants can browse, register, and pay seamlessly.
+A modern, full-stack chess tournament management platform. Organizers can create FIDE-rated tournaments, manage registrations, and track payments — while participants can browse, register, and pay seamlessly.
+
+> A product of **Easy Chess Academy**
 
 > 🎬 **Demo Video**: See the full platform walk-through in [`docs/full-platform-demo.webp`](docs/full-platform-demo.webp)
 
@@ -54,8 +56,8 @@ A modern, full-stack chess tournament management platform built for Indian chess
 ### 1. Clone & Install
 
 ```bash
-git clone https://github.com/ragavanRam98/chess-tournament-organiser.git
-cd chess-tournament-organiser
+git clone https://github.com/ragavanRam98/kingsquare.git
+cd kingsquare
 npm install
 ```
 
@@ -204,7 +206,7 @@ Participants don't need to create an account. They can:
 ## 📁 Project Structure
 
 ```
-chess-tournament-organiser/
+kingsquare/
 ├── apps/
 │   ├── api/              # NestJS REST API (port 3001)
 │   │   ├── src/
@@ -284,4 +286,4 @@ npm run test:e2e
 
 ## 📄 License
 
-MIT © Easy Chess Academy
+MIT © Easy Chess Academy — KingSquare is a product of Easy Chess Academy

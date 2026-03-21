@@ -46,12 +46,12 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: chess
+          POSTGRES_USER: ksuser
           POSTGRES_PASSWORD: testpass
-          POSTGRES_DB: chess_test
+          POSTGRES_DB: ks_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U chess"
+          --health-cmd "pg_isready -U ksuser"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -66,7 +66,7 @@ jobs:
           --health-retries 5
 
     env:
-      DATABASE_URL: postgres://chess:testpass@localhost:5432/chess_test
+      DATABASE_URL: postgres://ksuser:testpass@localhost:5432/ks_test
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: ci-test-secret
       JWT_REFRESH_SECRET: ci-test-refresh-secret
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build API image
-        run: docker build -f Dockerfile.api -t chess-api:ci .
+        run: docker build -f Dockerfile.api -t ks-api:ci .
 
       - name: Build Worker image
-        run: docker build -f Dockerfile.worker -t chess-worker:ci .
+        run: docker build -f Dockerfile.worker -t ks-worker:ci .

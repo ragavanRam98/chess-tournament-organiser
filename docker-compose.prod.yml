@@ -9,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
-    container_name: chess-api
+    container_name: ks-api
     restart: always
     env_file: .env
     environment:
@@ -36,7 +36,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    container_name: chess-worker
+    container_name: ks-worker
     restart: always
     env_file: .env
     environment:
@@ -58,7 +58,7 @@ services:
   # ── PostgreSQL (production) ────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: chess-postgres-prod
+    container_name: ks-postgres
     restart: always
     env_file: .env
     environment:
@@ -81,7 +81,7 @@ services:
   # ── PgBouncer (connection pooling) ─────────────────────────────────────
   pgbouncer:
     image: edoburu/pgbouncer:latest
-    container_name: chess-pgbouncer
+    container_name: ks-pgbouncer
     restart: always
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-chess}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-chess_tournament}
@@ -97,7 +97,7 @@ services:
   # ── Redis (production) ─────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: chess-redis-prod
+    container_name: ks-redis
     restart: always
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis_prod_password} --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
@@ -116,7 +116,7 @@ services:
   # ── Nginx Reverse Proxy ────────────────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
-    container_name: chess-nginx
+    container_name: ks-nginx
     restart: always
     ports:
       - "80:80"

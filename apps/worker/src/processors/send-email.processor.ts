@@ -8,7 +8,7 @@ import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
  * S6-1: SEND_EMAIL processor
  *
  * Handles email notification jobs enqueued by the API.
- * Templates: REGISTRATION_CONFIRMED, TOURNAMENT_CANCELLED, TOURNAMENT_APPROVED.
+ * Templates: REGISTRATION_CONFIRMED, TOURNAMENT_CANCELLED, TOURNAMENT_APPROVED, REFUND_PROCESSED.
  *
  * In production: integrates with SendGrid. In dev: logs the email.
  */
@@ -32,6 +32,8 @@ export class SendEmailProcessor extends WorkerHost {
         return this.sendTournamentCancelled(registrationId);
       case 'TOURNAMENT_APPROVED':
         return this.sendTournamentApproved(organizerId, tournamentId);
+      case 'REFUND_PROCESSED':
+        return this.sendRefundProcessed(registrationId, job.data.tournamentTitle);
       default:
         this.logger.warn(`[SEND_EMAIL] Unknown email type: ${type}`);
         return { sent: false };
@@ -117,11 +119,37 @@ export class SendEmailProcessor extends WorkerHost {
       subject: `Tournament Approved — ${tournament.title}`,
       html: `<p>Hi ${organizerName},</p>
              <p>Your tournament <strong>${tournament.title}</strong> has been approved and is now accepting registrations.</p>
-             <p>— Easy Chess Academy</p>`,
+             <p>— KingSquare · <small style="color:#9ca3af">A product of Easy Chess Academy</small></p>`,
     };
 
     await this.sendEmail(emailPayload);
     this.logger.log(`[SEND_EMAIL] TOURNAMENT_APPROVED sent to organizer for ${tournament.title}`);
+    return { sent: true };
+  }
+
+  private async sendRefundProcessed(registrationId: string, tournamentTitle?: string): Promise<{ sent: boolean }> {
+    const registration = await this.prisma.registration.findUnique({
+      where: { id: registrationId },
+      include: {
+        tournament: { select: { title: true } },
+      },
+    });
+
+    if (!registration || !registration.email) {
+      this.logger.warn(`[SEND_EMAIL] Registration ${registrationId} not found or no email — skipping refund email`);
+      return { sent: false };
+    }
+
+    const title = tournamentTitle ?? registration.tournament.title;
+
+    const emailPayload = {
+      to: registration.email,
+      subject: `Refund Processed — ${title}`,
+      html: this.renderRefundProcessedHtml(registration, title),
+    };
+
+    await this.sendEmail(emailPayload);
+    this.logger.log(`[SEND_EMAIL] REFUND_PROCESSED sent to ${registration.email} for ${registration.entryNumber}`);
     return { sent: true };
   }
 
@@ -140,7 +168,7 @@ export class SendEmailProcessor extends WorkerHost {
           <tr><td style="padding: 8px; border: 1px solid #e5e7eb;">Venue</td><td style="padding: 8px; border: 1px solid #e5e7eb;">${reg.tournament.venue ?? 'TBA'}</td></tr>
         </table>
         <p style="color: #6b7280; font-size: 14px;">Please save this email for your records.</p>
-        <p>— Easy Chess Academy</p>
+        <p>— KingSquare · <small style="color:#9ca3af">A product of Easy Chess Academy</small></p>
       </div>`;
   }
 
@@ -151,7 +179,22 @@ export class SendEmailProcessor extends WorkerHost {
         <p>Hi <strong>${reg.playerName}</strong>,</p>
         <p>We regret to inform you that the tournament <strong>${reg.tournament.title}</strong> has been cancelled.</p>
         <p>Your registration (${reg.entryNumber}) has been voided. If you made a payment, a refund will be processed shortly.</p>
-        <p>— Easy Chess Academy</p>
+        <p>— KingSquare · <small style="color:#9ca3af">A product of Easy Chess Academy</small></p>
+      </div>`;
+  }
+
+  private renderRefundProcessedHtml(reg: any, tournamentTitle: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #16a34a;">Refund Processed</h2>
+        <p>Hi <strong>${reg.playerName}</strong>,</p>
+        <p>Your refund for <strong>${tournamentTitle}</strong> has been processed successfully.</p>
+        <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+          <tr><td style="padding: 8px; border: 1px solid #e5e7eb;">Entry Number</td><td style="padding: 8px; border: 1px solid #e5e7eb;"><strong>${reg.entryNumber}</strong></td></tr>
+          <tr><td style="padding: 8px; border: 1px solid #e5e7eb;">Tournament</td><td style="padding: 8px; border: 1px solid #e5e7eb;">${tournamentTitle}</td></tr>
+        </table>
+        <p style="color: #6b7280; font-size: 14px;">The refund should reflect in your account within 5–7 business days depending on your bank.</p>
+        <p>— KingSquare · <small style="color:#9ca3af">A product of Easy Chess Academy</small></p>
       </div>`;
   }
 
@@ -163,7 +206,7 @@ export class SendEmailProcessor extends WorkerHost {
         const sgMail = await import('@sendgrid/mail');
         sgMail.default.setApiKey(process.env.SENDGRID_API_KEY);
         await sgMail.default.send({
-          from: process.env.EMAIL_FROM ?? 'noreply@easychessacademy.com',
+          from: process.env.EMAIL_FROM ?? 'noreply@kingsquare.in',
           to: payload.to,
           subject: payload.subject,
           html: payload.html,

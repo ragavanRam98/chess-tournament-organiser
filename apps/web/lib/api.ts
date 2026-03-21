@@ -11,9 +11,17 @@ export interface ApiError {
   error: { code: string | number; message: string | string[]; path: string; timestamp: string };
 }
 
-/* ─── Token store (sessionStorage — survives navigations, cleared on tab close) */
+/* ─── Token + user-info store (sessionStorage) ─────────────────────────── */
 
-const TOKEN_KEY = 'eca_access_token';
+const TOKEN_KEY     = 'eca_access_token';
+const USER_INFO_KEY = 'eca_user_info';
+
+export interface UserInfo {
+  id: string;
+  email: string;
+  role: 'SUPER_ADMIN' | 'ORGANIZER';
+  displayName: string;
+}
 
 export function setAccessToken(token: string | null) {
   if (typeof window === 'undefined') return;
@@ -21,12 +29,42 @@ export function setAccessToken(token: string | null) {
     sessionStorage.setItem(TOKEN_KEY, token);
   } else {
     sessionStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(USER_INFO_KEY);
   }
 }
 
 export function getAccessToken(): string | null {
   if (typeof window === 'undefined') return null;
   return sessionStorage.getItem(TOKEN_KEY);
+}
+
+export function setUserInfo(info: UserInfo | null) {
+  if (typeof window === 'undefined') return;
+  if (info) {
+    sessionStorage.setItem(USER_INFO_KEY, JSON.stringify(info));
+  } else {
+    sessionStorage.removeItem(USER_INFO_KEY);
+  }
+}
+
+export function getUserInfo(): UserInfo | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(USER_INFO_KEY);
+    return raw ? (JSON.parse(raw) as UserInfo) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Decodes a JWT payload without verifying the signature (client-side only). */
+export function decodeJwtRole(token: string): string | null {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload?.role ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /* ─── Core fetch wrapper ──────────────────────────────────────────── */
@@ -65,8 +103,11 @@ export async function apiFetch<T>(
     }
     // Refresh failed — clear token
     setAccessToken(null);
+    setUserInfo(null);
     if (typeof window !== 'undefined') {
-      window.location.href = '/organizer/login';
+      // Route to the correct login page based on the cached role.
+      const cached = getUserInfo();
+      window.location.href = cached?.role === 'SUPER_ADMIN' ? '/admin' : '/organizer/login';
     }
     throw new Error('Session expired');
   }
@@ -95,12 +136,28 @@ export const api = {
 export async function login(email: string, password: string) {
   const res = await api.post<{ access_token: string; user: any }>('/auth/login', { email, password });
   setAccessToken(res.data.access_token);
+  // Fetch and cache the user profile for the NavHeader avatar.
+  // Fire-and-forget — a failed /auth/me does not break the login flow.
+  fetchAndCacheUserInfo().catch(() => undefined);
   return res.data;
 }
 
 export async function logout() {
   try { await api.post('/auth/logout'); } catch { /* ignore */ }
   setAccessToken(null);
+  setUserInfo(null);
+  if (typeof window !== 'undefined') window.location.href = '/';
+}
+
+/** Calls GET /auth/me and caches the result in sessionStorage. */
+export async function fetchAndCacheUserInfo(): Promise<UserInfo | null> {
+  try {
+    const res = await api.get<UserInfo>('/auth/me');
+    setUserInfo(res.data);
+    return res.data;
+  } catch {
+    return null;
+  }
 }
 
 async function tryRefreshToken(): Promise<boolean> {

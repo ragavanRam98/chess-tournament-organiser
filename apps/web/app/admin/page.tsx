@@ -124,11 +124,14 @@ export default function AdminDashboard() {
         <p style={{ color: 'var(--text-muted)' }}>Review and approve tournament submissions</p>
       </div>
 
-      <div className="animate-fadeInUp delay-100" style={{ marginBottom: 24 }}>
-        <h2 style={{ fontSize: '1.2rem', marginBottom: 4 }}>
+      <div className="animate-fadeInUp delay-100" style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <h2 style={{ fontSize: '1.2rem', marginBottom: 0 }}>
           Pending Approvals
           <span className="badge badge-warning" style={{ marginLeft: 10 }}>{tournaments.length}</span>
         </h2>
+        <a href="/admin/audit-logs" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
+          Audit Logs
+        </a>
       </div>
 
       {loading ? (

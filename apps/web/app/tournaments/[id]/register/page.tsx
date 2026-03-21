@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
+import FideInput from '@/components/FideInput';
 
 interface Category {
   id: string; name: string; minAge: number; maxAge: number;
@@ -98,7 +99,7 @@ export default function RegistrationPage() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID ?? '',
         amount: amountPaise,
         currency: 'INR',
-        name: 'Easy Chess Academy',
+        name: 'KingSquare',
         description: `Tournament Registration — ${entryNumber}`,
         order_id: orderId,
         handler: () => {
@@ -227,15 +228,22 @@ export default function RegistrationPage() {
             </div>
 
             {/* FIDE */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div className="form-group">
-                <label className="form-label">FIDE ID</label>
-                <input type="text" name="fideId" value={form.fideId} onChange={handleChange} className="form-input" placeholder="Optional" />
-              </div>
-              <div className="form-group">
-                <label className="form-label">FIDE Rating</label>
-                <input type="number" name="fideRating" value={form.fideRating} onChange={handleChange} className="form-input" placeholder="Optional" />
-              </div>
+            <FideInput
+              value={form.fideId}
+              onChange={v => setForm(prev => ({ ...prev, fideId: v }))}
+              playerName={form.playerName}
+              onVerified={d => setForm(prev => ({
+                ...prev,
+                fideRating: prev.fideRating || String(d.standard_rating ?? d.rapid_rating ?? ''),
+              }))}
+            />
+            <div className="form-group">
+              <label className="form-label">
+                FIDE Rating
+                <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 6 }}>(optional)</span>
+              </label>
+              <input type="number" name="fideRating" value={form.fideRating} onChange={handleChange} className="form-input" placeholder="e.g. 1450" min={0} max={3400} />
+              <span className="form-hint">Leave blank if unrated — we auto-fill from FIDE ID when verified.</span>
             </div>
           </div>
 

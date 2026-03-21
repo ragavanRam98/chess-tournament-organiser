@@ -22,6 +22,16 @@ export class RegistrationsController {
         return this.registrationsService.register(tournamentId, categoryId, dto);
     }
 
+    /**
+     * GET /tournaments/:id/participants — public, no auth required.
+     * Returns entry_number, player_name, city, category for CONFIRMED registrations only.
+     * PII (phone, email, DOB, FIDE ID, payment) is never exposed.
+     */
+    @Get('tournaments/:id/participants')
+    participants(@Param('id') tournamentId: string) {
+        return this.registrationsService.getPublicParticipants(tournamentId);
+    }
+
     /** GET /registrations/:entryNumber/status — public status check */
     @Get('registrations/:entryNumber/status')
     status(@Param('entryNumber') entryNumber: string) {

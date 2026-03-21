@@ -1,8 +1,9 @@
 // apps/api/src/auth/auth.service.ts
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterOrganizerDto } from './dto/register-organizer.dto';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { Request, Response } from 'express';
@@ -23,10 +24,44 @@ export class AuthService {
         private readonly jwt: JwtService,
     ) { }
 
+    async registerOrganizer(dto: RegisterOrganizerDto): Promise<{ data: { message: string } }> {
+        const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+        if (existing) throw new ConflictException('EMAIL_ALREADY_REGISTERED');
+
+        await this.prisma.$transaction(async (tx) => {
+            const user = await tx.user.create({
+                data: {
+                    email: dto.email,
+                    passwordHash: await bcrypt.hash(dto.password, 12),
+                    role: 'ORGANIZER',
+                    status: 'PENDING_VERIFICATION',
+                },
+            });
+            await tx.organizer.create({
+                data: {
+                    userId: user.id,
+                    academyName: dto.academyName,
+                    contactPhone: dto.contactPhone,
+                    city: dto.city,
+                    state: dto.state,
+                    description: dto.description,
+                },
+            });
+        });
+
+        return { data: { message: 'Registration successful. Your account is pending admin verification.' } };
+    }
+
     async login(dto: LoginDto, res: Response): Promise<{ data: { access_token: string; token_type: string; expires_in: number } }> {
         const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
         if (!user || !(await bcrypt.compare(dto.password, user.passwordHash))) {
-            throw new UnauthorizedException('UNAUTHORIZED');
+            throw new UnauthorizedException('Invalid email or password');
+        }
+        if (user.status === 'PENDING_VERIFICATION') {
+            throw new UnauthorizedException('Your account is pending admin verification. You will be notified once approved.');
+        }
+        if (user.status !== 'ACTIVE') {
+            throw new UnauthorizedException('Your account has been suspended. Please contact support.');
         }
 
         const accessToken = this.issueAccessToken(user.id, user.role);
@@ -67,6 +102,18 @@ export class AuthService {
         }
         res.clearCookie(COOKIE_NAME, { path: '/auth/refresh' });
         return { data: { success: true } };
+    }
+
+    async getMe(userId: string): Promise<{ data: { id: string; email: string; role: string; displayName: string } }> {
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: { organizer: { select: { academyName: true } } },
+        });
+        if (!user) throw new UnauthorizedException('UNAUTHORIZED');
+        const displayName = user.role === 'ORGANIZER'
+            ? (user.organizer?.academyName ?? user.email)
+            : 'Super Admin';
+        return { data: { id: user.id, email: user.email, role: user.role, displayName } };
     }
 
     private issueAccessToken(userId: string, role: string): string {

@@ -17,6 +17,8 @@ export default function CreateTournamentPage() {
   const [categories, setCategories] = useState<CategoryInput[]>([
     { key: 0, name: '', minAge: '0', maxAge: '999', entryFeePaise: '', maxSeats: '' },
   ]);
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [posterPreview, setPosterPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,6 +33,18 @@ export default function CreateTournamentPage() {
 
   const updateCategory = (key: number, field: string, value: string) => {
     setCategories(prev => prev.map(c => c.key === key ? { ...c, [field]: value } : c));
+  };
+
+  const handlePosterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setPosterFile(file);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => setPosterPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    } else {
+      setPosterPreview(null);
+    }
   };
 
   const addCategory = () => {
@@ -57,7 +71,26 @@ export default function CreateTournamentPage() {
           maxSeats: parseInt(c.maxSeats) || 50,
         })),
       };
-      await api.post('/organizer/tournaments', payload);
+      const res = await api.post<any>('/organizer/tournaments', payload);
+      const tournamentId = res.data?.id;
+
+      // Upload poster if selected
+      if (posterFile && tournamentId) {
+        try {
+          const formData = new FormData();
+          formData.append('poster', posterFile);
+          const token = getAccessToken();
+          const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+          await fetch(`${API_BASE}/organizer/tournaments/${tournamentId}/poster`, {
+            method: 'POST',
+            headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            body: formData,
+          });
+        } catch {
+          // Poster upload failed silently — tournament was created
+        }
+      }
+
       window.location.href = '/organizer/dashboard';
     } catch (err: any) {
       const msg = err?.error?.message;
@@ -121,6 +154,53 @@ export default function CreateTournamentPage() {
                 <input type="date" name="registrationDeadline" value={form.registrationDeadline} onChange={handleChange} required className="form-input" />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Poster Upload */}
+        <div className="card card-body animate-fadeInUp delay-300" style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: '1.1rem', marginBottom: 16 }}>Tournament Poster</h3>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 16 }}>
+            Upload a poster image (JPEG, PNG, or WebP, max 5 MB). This will be shown on the tournament page.
+          </p>
+          <div style={{
+            border: '2px dashed var(--ks-border)', borderRadius: 'var(--radius-md)',
+            padding: posterPreview ? 0 : 32, textAlign: 'center', cursor: 'pointer',
+            position: 'relative', overflow: 'hidden', transition: 'border-color 0.2s',
+          }}
+            onClick={() => document.getElementById('poster-input')?.click()}
+          >
+            {posterPreview ? (
+              <div style={{ position: 'relative' }}>
+                <img src={posterPreview} alt="Poster preview" style={{ width: '100%', maxHeight: 280, objectFit: 'cover', display: 'block' }} />
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setPosterFile(null); setPosterPreview(null); }}
+                  style={{
+                    position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff',
+                    border: 'none', borderRadius: 'var(--radius-full)', width: 28, height: 28,
+                    cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}
+                >✕</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontSize: '2rem', marginBottom: 8, opacity: 0.4 }}>🖼</div>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+                  Click to upload or drag &amp; drop
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 4 }}>
+                  JPEG, PNG, or WebP — max 5 MB
+                </div>
+              </>
+            )}
+            <input
+              id="poster-input"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePosterChange}
+              style={{ display: 'none' }}
+            />
           </div>
         </div>
 

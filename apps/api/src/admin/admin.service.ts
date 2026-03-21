@@ -1,13 +1,18 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { QueueService } from '../queue/queue.service';
+import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
 import { TournamentsService } from '../tournaments/tournaments.service';
 import { TournamentStatus } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
+    private readonly logger = new Logger(AdminService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly tournamentsService: TournamentsService,
+        private readonly queue: QueueService,
     ) { }
 
     // ── Tournaments ────────────────────────────────────────────────────────────
@@ -149,6 +154,46 @@ export class AdminService {
                 })),
             },
         };
+    }
+
+    // ── Manual Refund ─────────────────────────────────────────────────────
+
+    async refundRegistration(registrationId: string, adminUserId: string) {
+        const registration = await this.prisma.registration.findUnique({
+            where: { id: registrationId },
+            include: {
+                payment: { select: { status: true } },
+                tournament: { select: { title: true } },
+            },
+        });
+
+        if (!registration) throw new NotFoundException('Registration not found');
+        if (registration.status !== 'CONFIRMED') {
+            throw new ConflictException('Only CONFIRMED registrations can be refunded');
+        }
+        if (!registration.payment || registration.payment.status !== 'PAID') {
+            throw new ConflictException('No paid payment found for this registration');
+        }
+
+        // Queue the refund job (async — processed by worker)
+        await this.queue.add(QUEUE_NAMES.PAYMENTS, JOB_NAMES.PROCESS_REFUND, {
+            registrationId,
+        }, { attempts: 3, backoff: { type: 'exponential', delay: 5000 } });
+
+        // Audit log
+        await this.prisma.auditLog.create({
+            data: {
+                entityType: 'registration',
+                entityId: registrationId,
+                action: 'REFUNDED',
+                oldValue: { status: registration.status } as any,
+                newValue: { status: 'REFUND_QUEUED' } as any,
+                performedById: adminUserId,
+            },
+        });
+
+        this.logger.log(`[REFUND] Admin ${adminUserId} queued manual refund for registration ${registrationId}`);
+        return { data: { registrationId, status: 'REFUND_QUEUED' } };
     }
 
     // ── Audit Logs ─────────────────────────────────────────────────────────────

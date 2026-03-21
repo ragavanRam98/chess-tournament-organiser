@@ -28,4 +28,8 @@ export class RazorpayService {
     async fetchPayment(paymentId: string) {
         return this.client.payments.fetch(paymentId);
     }
+
+    async refundPayment(paymentId: string, amountPaise: number): Promise<{ id: string }> {
+        return (this.client.payments as any).refund(paymentId, { amount: amountPaise });
+    }
 }

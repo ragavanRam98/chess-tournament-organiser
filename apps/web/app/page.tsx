@@ -53,7 +53,7 @@ export default function HomePage() {
       </section>
 
       {/* ── Tournament Cards ────────────────── */}
-      <section className="container" style={{ paddingBottom: 80 }}>
+      <section className="container" style={{ paddingTop: 48, paddingBottom: 80 }}>
         {loading ? (
           <div className="grid-cards">
             {[1, 2, 3, 4, 5, 6].map(i => (

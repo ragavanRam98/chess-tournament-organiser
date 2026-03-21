@@ -30,9 +30,9 @@ export default function OrganizerLoginPage() {
         <div className="animate-fadeInUp" style={{ textAlign: 'center', marginBottom: 40 }}>
           <div style={{
             width: 72, height: 72, borderRadius: 'var(--radius-lg)', margin: '0 auto 16px',
-            background: 'linear-gradient(135deg, var(--brand-navy), var(--brand-slate))',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem',
-            boxShadow: '0 8px 24px rgba(15,23,42,0.3)',
+            background: 'var(--ks-red)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: '#fff',
+            boxShadow: '0 8px 24px rgba(196,30,30,0.25)',
           }}>♔</div>
           <h1 style={{ fontSize: '1.5rem', marginBottom: 4 }}>Organizer Portal</h1>
           <p style={{ color: 'var(--text-muted)' }}>Sign in to manage your tournaments</p>
@@ -61,7 +61,7 @@ export default function OrganizerLoginPage() {
         </form>
 
         <p style={{ textAlign: 'center', marginTop: 24, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          Don&apos;t have an account? <a href="/auth/register">Register as organizer</a>
+          Don&apos;t have an account? <a href="/organizer/register">Register as organizer</a>
         </p>
       </div>
     </div>

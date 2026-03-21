@@ -69,7 +69,7 @@ export class ExportsProcessor extends WorkerHost {
 
       // Build Excel workbook
       const workbook = new ExcelJS.Workbook();
-      workbook.creator = 'Easy Chess Academy';
+      workbook.creator = 'KingSquare';
       workbook.created = new Date();
 
       const sheet = workbook.addWorksheet('Registrations');

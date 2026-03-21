@@ -22,6 +22,9 @@ jobs:
       contents: read
       packages: write
 
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -41,12 +44,17 @@ jobs:
             echo "tag=sha-$(echo ${{ github.sha }} | head -c 7)" >> $GITHUB_OUTPUT
           fi
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build & push API
         uses: docker/build-push-action@v5
         with:
           context: .
           file: Dockerfile.api
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api:${{ steps.tag.outputs.tag }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/api:latest
@@ -57,6 +65,8 @@ jobs:
           context: .
           file: Dockerfile.worker
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/worker:${{ steps.tag.outputs.tag }}
             ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/worker:latest
@@ -72,17 +82,43 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run database migrations
-        run: |
-          echo "Running: npx prisma migrate deploy"
-          # In production, this would SSH into the staging server or use a migration job
-          # npx prisma migrate deploy
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.STAGING_APP_DIR || '/opt/kingsquare' }}
 
-      - name: Deploy to staging server
-        run: |
-          echo "Deploying sha-$(echo ${{ github.sha }} | head -c 7) to staging..."
-          # In production: docker compose pull && docker compose up -d
-          # Or: kubectl set image deployment/api api=$IMAGE:$TAG
+            # Pull latest images
+            echo "🔄 Pulling images..."
+            docker compose -f docker-compose.prod.yml pull api worker
+
+            # Run database migrations
+            echo "🗃 Running migrations..."
+            docker compose -f docker-compose.prod.yml run --rm \
+              -e DATABASE_URL="${DATABASE_URL}" \
+              api npx prisma migrate deploy --schema prisma/schema.prisma
+
+            # Restart services with zero-downtime
+            echo "🚀 Restarting services..."
+            docker compose -f docker-compose.prod.yml up -d --no-deps api worker
+
+            # Wait for health check
+            echo "🏥 Waiting for health check..."
+            sleep 5
+            for i in 1 2 3 4 5; do
+              if curl -sf http://localhost:3001/api/v1/health > /dev/null 2>&1; then
+                echo "✅ API healthy"
+                exit 0
+              fi
+              echo "  Attempt $i/5 — waiting..."
+              sleep 5
+            done
+            echo "❌ Health check failed after 5 attempts"
+            exit 1
 
   # ── Deploy to Production (on version tag) ──────────────────────────
   deploy-production:
@@ -95,13 +131,45 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Run database migrations
-        run: |
-          echo "Running production migrations for ${{ github.ref_name }}"
-          # npx prisma migrate deploy --schema prisma/schema.prisma
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            set -e
+            cd ${{ secrets.PROD_APP_DIR || '/opt/kingsquare' }}
 
-      - name: Deploy to production
-        run: |
-          echo "Deploying ${{ github.ref_name }} to production..."
-          # docker compose -f docker-compose.prod.yml pull
-          # docker compose -f docker-compose.prod.yml up -d
+            # Pull tagged images
+            echo "🔄 Pulling images for ${{ github.ref_name }}..."
+            docker compose -f docker-compose.prod.yml pull api worker
+
+            # Run database migrations
+            echo "🗃 Running production migrations..."
+            docker compose -f docker-compose.prod.yml run --rm \
+              -e DATABASE_URL="${DATABASE_URL}" \
+              api npx prisma migrate deploy --schema prisma/schema.prisma
+
+            # Restart services
+            echo "🚀 Deploying ${{ github.ref_name }} to production..."
+            docker compose -f docker-compose.prod.yml up -d --no-deps api worker
+
+            # Health check
+            echo "🏥 Waiting for health check..."
+            sleep 5
+            for i in 1 2 3 4 5 6; do
+              if curl -sf http://localhost:3001/api/v1/health > /dev/null 2>&1; then
+                echo "✅ API healthy — ${{ github.ref_name }} deployed"
+                exit 0
+              fi
+              echo "  Attempt $i/6 — waiting..."
+              sleep 5
+            done
+            echo "❌ Health check failed — rolling back..."
+            docker compose -f docker-compose.prod.yml logs --tail=50 api
+            exit 1
+
+      - name: Notify deployment
+        if: success()
+        run: echo "✅ ${{ github.ref_name }} deployed to production"

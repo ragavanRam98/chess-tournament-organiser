@@ -1,7 +1,9 @@
 import {
     Controller, Get, Post, Patch, Param, Body, Query, Req,
-    UseGuards, HttpCode,
+    UseGuards, HttpCode, UseInterceptors, UploadedFile, ParseFilePipe,
+    MaxFileSizeValidator, FileTypeValidator, BadRequestException,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { TournamentsService } from './tournaments.service';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
@@ -39,6 +41,14 @@ export class TournamentsController {
         return this.tournamentsService.findOneForOrganizer(id, req.user.organizerId);
     }
 
+    /** GET /organizer/tournaments/:id/registrations — full participant list for organizer with FIDE verification badges */
+    @Get('organizer/tournaments/:id/registrations')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ORGANIZER')
+    listRegistrations(@Req() req: any, @Param('id') id: string) {
+        return this.tournamentsService.listRegistrationsForOrganizer(id, req.user.organizerId);
+    }
+
     @Patch('organizer/tournaments/:id')
     @UseGuards(JwtAuthGuard, RolesGuard, OrganizerOwnershipGuard)
     @Roles('ORGANIZER')
@@ -52,6 +62,27 @@ export class TournamentsController {
     @HttpCode(200)
     submit(@Req() req: any, @Param('id') id: string) {
         return this.tournamentsService.submitForApproval(id, req.user.organizerId);
+    }
+
+    @Post('organizer/tournaments/:id/poster')
+    @UseGuards(JwtAuthGuard, RolesGuard, OrganizerOwnershipGuard)
+    @Roles('ORGANIZER')
+    @UseInterceptors(FileInterceptor('poster'))
+    @HttpCode(200)
+    uploadPoster(
+        @Param('id') id: string,
+        @Req() req: any,
+        @UploadedFile(
+            new ParseFilePipe({
+                validators: [
+                    new MaxFileSizeValidator({ maxSize: 5 * 1024 * 1024 }), // 5 MB
+                    new FileTypeValidator({ fileType: /^image\/(jpeg|png|webp)$/ }),
+                ],
+            }),
+        )
+        file: Express.Multer.File,
+    ) {
+        return this.tournamentsService.uploadPoster(id, req.user.organizerId, file);
     }
 
     // ── Public routes (no auth required) ──────────────────────────────────────

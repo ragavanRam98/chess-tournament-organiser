@@ -3,8 +3,14 @@ import {
     NotFoundException,
     ConflictException,
     ForbiddenException,
+    Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
+import { QueueService } from '../queue/queue.service';
+import { QUEUE_NAMES, JOB_NAMES } from '../queue/queue.constants';
+import { randomUUID } from 'crypto';
+import * as path from 'path';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
 import { TournamentStatus } from '@prisma/client';
@@ -24,7 +30,13 @@ const ORGANIZER_SUBMIT_TO: TournamentStatus = 'PENDING_APPROVAL';
 
 @Injectable()
 export class TournamentsService {
-    constructor(private readonly prisma: PrismaService) { }
+    private readonly logger = new Logger(TournamentsService.name);
+
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly queue: QueueService,
+        private readonly storage: StorageService,
+    ) { }
 
     // ── Organizer: Create ──────────────────────────────────────────────────────
 
@@ -79,6 +91,54 @@ export class TournamentsService {
         ]);
 
         return { data: tournaments, meta: { total, page, limit } };
+    }
+
+    // ── Organizer: List registrations for a tournament ─────────────────────────
+
+    async listRegistrationsForOrganizer(tournamentId: string, organizerId: string) {
+        // Verify ownership
+        const tournament = await this.prisma.tournament.findFirst({
+            where: { id: tournamentId, organizerId },
+            select: { id: true },
+        });
+        if (!tournament) throw new NotFoundException('NOT_FOUND');
+
+        const registrations = await this.prisma.registration.findMany({
+            where: { tournamentId },
+            include: { category: { select: { name: true } } },
+            orderBy: { registeredAt: 'desc' },
+        });
+
+        // Batch FIDE verification — one query for all unique non-null fideIds
+        const fideIds = [...new Set(registrations.map(r => r.fideId).filter(Boolean) as string[])];
+        const verifiedSet = new Set<string>();
+        if (fideIds.length > 0) {
+            const verified = await this.prisma.fidePlayer.findMany({
+                where: { fideId: { in: fideIds } },
+                select: { fideId: true },
+            });
+            verified.forEach(p => verifiedSet.add(p.fideId));
+        }
+
+        return {
+            data: {
+                registrations: registrations.map(r => ({
+                    id: r.id,
+                    entryNumber: r.entryNumber,
+                    playerName: r.playerName,
+                    phone: r.phone,
+                    email: r.email,
+                    city: r.city,
+                    status: r.status,
+                    registeredAt: r.registeredAt,
+                    confirmedAt: r.confirmedAt,
+                    category: r.category,
+                    fideId: r.fideId,
+                    fideRating: r.fideRating,
+                    fideVerified: r.fideId ? verifiedSet.has(r.fideId) : null,
+                })),
+            },
+        };
     }
 
     // ── Organizer: Get one ─────────────────────────────────────────────────────
@@ -195,7 +255,46 @@ export class TournamentsService {
             },
         });
         if (!t) throw new NotFoundException('NOT_FOUND');
-        return { data: t };
+        const withPoster = await this.attachPosterUrl(t);
+        return { data: withPoster };
+    }
+
+    // ── Organizer: Upload poster ────────────────────────────────────────────────
+
+    async uploadPoster(id: string, organizerId: string, file: Express.Multer.File) {
+        const t = await this.prisma.tournament.findFirst({ where: { id, organizerId } });
+        if (!t) throw new NotFoundException('NOT_FOUND');
+
+        // Delete old poster if exists
+        if (t.posterKey) {
+            try { await this.storage.delete(t.posterKey); } catch { /* ignore */ }
+        }
+
+        const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
+        const key = `posters/${id}/${randomUUID()}${ext}`;
+        await this.storage.upload(key, file.buffer, file.mimetype);
+
+        await this.prisma.tournament.update({
+            where: { id },
+            data: { posterKey: key },
+        });
+
+        const posterUrl = await this.storage.getSignedUrl(key, 3600);
+        return { data: { posterKey: key, posterUrl } };
+    }
+
+    // ── Helper: Generate poster URL ──────────────────────────────────────────
+
+    private async attachPosterUrl<T extends { posterKey?: string | null }>(
+        tournament: T,
+    ): Promise<T & { posterUrl?: string | null }> {
+        if (!tournament.posterKey) return { ...tournament, posterUrl: null };
+        try {
+            const posterUrl = await this.storage.getSignedUrl(tournament.posterKey, 3600);
+            return { ...tournament, posterUrl };
+        } catch {
+            return { ...tournament, posterUrl: null };
+        }
     }
 
     // ── Admin: Status transition ───────────────────────────────────────────────
@@ -247,6 +346,23 @@ export class TournamentsService {
 
             return result;
         });
+
+        // Queue refunds + cancellation emails for all confirmed registrations
+        if (newStatus === 'CANCELLED') {
+            const confirmed = await this.prisma.registration.findMany({
+                where: { tournamentId: id, status: 'CONFIRMED' },
+                select: { id: true },
+            });
+            for (const reg of confirmed) {
+                await this.queue.add(QUEUE_NAMES.PAYMENTS, JOB_NAMES.PROCESS_REFUND, {
+                    registrationId: reg.id,
+                }, { attempts: 3, backoff: { type: 'exponential', delay: 5000 } });
+                await this.queue.add(QUEUE_NAMES.NOTIFICATIONS, JOB_NAMES.SEND_EMAIL, {
+                    registrationId: reg.id, type: 'TOURNAMENT_CANCELLED',
+                });
+            }
+            this.logger.log(`[CANCEL] Queued ${confirmed.length} refund + notification jobs for tournament ${id}`);
+        }
 
         return { data: { id: updated.id, status: updated.status } };
     }

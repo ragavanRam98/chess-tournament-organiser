@@ -87,4 +87,37 @@ export class PaymentsService {
 
         return { status: 'ok' };
     }
+
+    async processRefund(registrationId: string): Promise<{ refunded: boolean; refundId?: string }> {
+        const payment = await this.prisma.payment.findUnique({
+            where: { registrationId },
+            include: { registration: { select: { status: true, entryNumber: true, tournamentId: true } } },
+        });
+
+        if (!payment || payment.status !== 'PAID' || !payment.razorpayPaymentId) {
+            this.logger.warn(`[REFUND] No refundable payment for registration ${registrationId}`);
+            return { refunded: false };
+        }
+
+        try {
+            const refund = await this.razorpay.refundPayment(payment.razorpayPaymentId, payment.amountPaise);
+
+            await this.prisma.$transaction([
+                this.prisma.payment.update({
+                    where: { id: payment.id },
+                    data: { status: 'REFUNDED', gatewayResponse: { ...(payment.gatewayResponse as any ?? {}), refundId: refund.id } },
+                }),
+                this.prisma.registration.update({
+                    where: { id: registrationId },
+                    data: { status: 'CANCELLED' },
+                }),
+            ]);
+
+            this.logger.log(`[REFUND] Refunded ${payment.amountPaise} paise for ${payment.registration.entryNumber} (refund ID: ${refund.id})`);
+            return { refunded: true, refundId: refund.id };
+        } catch (err) {
+            this.logger.error(`[REFUND] Failed for registration ${registrationId}: ${(err as Error).message}`);
+            return { refunded: false };
+        }
+    }
 }

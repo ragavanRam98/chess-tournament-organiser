@@ -3,6 +3,8 @@ import {
 } from '@nestjs/common';
 import { BullModule, InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { PrismaService } from '../prisma/prisma.service';
+import { PrismaModule } from '../prisma/prisma.module';
 import { QUEUE_NAMES, JOB_NAMES } from './queue.constants';
 
 // S5-5: DLQ monitoring service — logs failed job counts on startup
@@ -15,6 +17,7 @@ export class DlqService implements OnModuleInit {
     @InjectQueue(QUEUE_NAMES.NOTIFICATIONS) private notificationsQueue: Queue,
     @InjectQueue(QUEUE_NAMES.EXPORTS) private exportsQueue: Queue,
     @InjectQueue(QUEUE_NAMES.CLEANUP) private cleanupQueue: Queue,
+    private readonly prisma: PrismaService,
   ) {}
 
   async onModuleInit() {
@@ -53,6 +56,22 @@ export class DlqService implements OnModuleInit {
       },
     );
 
+    // GAP 4: SYNC_FIDE_RATINGS — monthly on the 1st at 3 AM IST (21:30 UTC previous day).
+    // Uses the CLEANUP queue (low priority). FIDE publishes fresh lists on the 1st each month.
+    await this.cleanupQueue.add(
+      JOB_NAMES.SYNC_FIDE_RATINGS,
+      {},
+      {
+        repeat: { pattern: '30 21 1 * *' }, // 21:30 UTC on the 1st = 3:00 AM IST on the 2nd
+        jobId: 'cron:sync-fide-ratings',
+        removeOnFail: false,
+        removeOnComplete: true,
+        // Allow extra attempts — FIDE download can be slow
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 60000 }, // 1 min, 2 min, 4 min
+      },
+    );
+
     // S5-5: Log DLQ depth for each queue on startup
     const queues = [
       { name: QUEUE_NAMES.PAYMENTS, q: this.paymentsQueue },
@@ -69,11 +88,35 @@ export class DlqService implements OnModuleInit {
         this.logger.log(`[DLQ] Queue "${name}" — 0 failed jobs ✓`);
       }
     }
+
+    // FIX 8: FIDE bootstrap — on first deploy, fide_players table is empty.
+    // Queue an immediate sync instead of waiting for the monthly cron.
+    try {
+      const fideCount = await this.prisma.fidePlayer.count();
+      if (fideCount === 0) {
+        this.logger.warn('[FIDE_BOOTSTRAP] fide_players table is empty — queuing immediate FIDE sync');
+        await this.cleanupQueue.add(
+          JOB_NAMES.SYNC_FIDE_RATINGS,
+          { bootstrap: true },
+          {
+            jobId: 'bootstrap:fide-sync',
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 60000 },
+            removeOnFail: false,
+          },
+        );
+      } else {
+        this.logger.log(`[FIDE_BOOTSTRAP] fide_players has ${fideCount.toLocaleString()} records — no bootstrap needed`);
+      }
+    } catch (err: any) {
+      this.logger.error(`[FIDE_BOOTSTRAP] Check failed: ${err.message}`);
+    }
   }
 }
 
 @Module({
   imports: [
+    PrismaModule,
     BullModule.forRootAsync({
       useFactory: () => ({
         connection: { url: process.env.REDIS_URL ?? 'redis://localhost:6379' },

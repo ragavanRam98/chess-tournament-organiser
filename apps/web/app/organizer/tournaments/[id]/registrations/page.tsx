@@ -8,6 +8,36 @@ interface Registration {
   id: string; entryNumber: string; playerName: string; phone: string; email: string | null;
   city: string | null; status: string; registeredAt: string; confirmedAt: string | null;
   category: { name: string };
+  fideId: string | null; fideRating: number | null; fideVerified: boolean | null;
+}
+
+/** Inline FIDE ID cell with verified / unverified / none badge */
+function FideIdCell({ fideId, fideRating, fideVerified }: { fideId: string | null; fideRating: number | null; fideVerified: boolean | null }) {
+  if (!fideId) return <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>;
+
+  const isVerified = fideVerified === true;
+  const isUnverified = fideVerified === false;
+
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+      <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{fideId}</span>
+      {isVerified && (
+        <span title="FIDE ID verified in our rating database" style={{
+          background: 'rgba(16,185,129,0.1)', color: '#059669',
+          padding: '1px 6px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
+        }}>✓ Verified</span>
+      )}
+      {isUnverified && (
+        <span title="FIDE ID not found in our rating database — may be unrated or ID is incorrect" style={{
+          background: 'rgba(245,158,11,0.1)', color: '#d97706',
+          padding: '1px 6px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
+        }}>⚠ Unverified</span>
+      )}
+      {fideRating && (
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({fideRating})</span>
+      )}
+    </span>
+  );
 }
 
 const statusMap: Record<string, { cls: string }> = {
@@ -34,8 +64,10 @@ export default function OrganizerRegistrationsPage() {
     if (!getAccessToken()) { window.location.href = '/organizer/login'; return; }
     api.get<any>(`/organizer/tournaments/${tournamentId}/registrations`)
       .then(res => {
-        const data = res.data;
-        setRegistrations(Array.isArray(data) ? data : data?.registrations ?? []);
+        const payload = res.data;
+        // API returns { data: { registrations: [...] } }
+        const list = payload?.registrations ?? (Array.isArray(payload) ? payload : []);
+        setRegistrations(list);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -126,6 +158,7 @@ export default function OrganizerRegistrationsPage() {
                 <th>Category</th>
                 <th>Phone</th>
                 <th>City</th>
+                <th>FIDE ID</th>
                 <th>Status</th>
                 <th>Date</th>
               </tr>
@@ -140,6 +173,9 @@ export default function OrganizerRegistrationsPage() {
                     <td>{r.category?.name}</td>
                     <td>{r.phone}</td>
                     <td>{r.city ?? '—'}</td>
+                    <td>
+                      <FideIdCell fideId={r.fideId} fideRating={r.fideRating} fideVerified={r.fideVerified} />
+                    </td>
                     <td>
                       <span className={`badge ${badge.cls}`}>{r.status.replace('_', ' ')}</span>
                     </td>

@@ -176,6 +176,7 @@ model Tournament {
   approvedById          String?           @map("approved_by") @db.Uuid
   cancelledAt           DateTime?         @map("cancelled_at") @db.Timestamptz()
   cancelledById         String?           @map("cancelled_by") @db.Uuid
+  posterKey             String?           @map("poster_key") @db.VarChar(500)
   createdAt             DateTime          @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt             DateTime          @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
 
@@ -309,6 +310,27 @@ model NotificationLog {
 
   @@index([registrationId], name: "idx_notif_registration")
   @@map("notification_log")
+}
+
+/// Local mirror of the FIDE standard rating list (publicly available, no API key needed).
+/// Downloaded monthly by the FideSyncProcessor background job.
+/// Privacy note: This table contains only publicly available FIDE data — no GDPR concern.
+model FidePlayer {
+  fideId          String    @id @map("fide_id") @db.VarChar(20)
+  name            String    @db.VarChar(255)
+  country         String    @db.VarChar(10)
+  sex             String?   @db.Char(1)
+  title           String?   @db.VarChar(10)   // GM, IM, FM, CM, WGM, WIM, WFM, WCM
+  standardRating  Int?      @map("standard_rating")
+  rapidRating     Int?      @map("rapid_rating")
+  blitzRating     Int?      @map("blitz_rating")
+  birthYear       Int?      @map("birth_year")
+  lastUpdated     DateTime  @default(now()) @map("last_updated") @db.Timestamptz()
+
+  // Name index for mismatch detection (when player types their name vs. FIDE record).
+  // A trigram index can be added manually for full-text search if needed in Phase 2.
+  @@index([country], name: "idx_fide_country")
+  @@map("fide_players")
 }
 
 /// Tracks async Excel/CSV export jobs for organizers. Files are stored in R2

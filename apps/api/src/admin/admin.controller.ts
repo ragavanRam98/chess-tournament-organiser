@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -29,4 +29,9 @@ export class AdminController {
 
     @Get('audit-logs')
     auditLogs(@Query() q: unknown) { return this.adminService.auditLogs(q); }
+
+    @Post('registrations/:id/refund')
+    refundRegistration(@Param('id') id: string, @Req() req: any) {
+        return this.adminService.refundRegistration(id, req.user?.sub ?? req.user?.id);
+    }
 }

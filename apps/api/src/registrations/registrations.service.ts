@@ -99,6 +99,65 @@ export class RegistrationsService {
         };
     }
 
+    /**
+     * GET /tournaments/:id/participants — public, no auth required.
+     *
+     * Returns only CONFIRMED registrations. Deliberately omits PII:
+     * phone, email, player_dob, fide_id, fide_rating, payment details.
+     * Safe to expose publicly — same data class as a physical notice board
+     * at the tournament venue.
+     */
+    async getPublicParticipants(tournamentId: string) {
+        const tournament = await this.prisma.tournament.findUnique({
+            where: { id: tournamentId },
+            include: {
+                categories: {
+                    select: { id: true, name: true, maxSeats: true, registeredCount: true },
+                    orderBy: { minAge: 'asc' },
+                },
+            },
+        });
+        if (!tournament) throw new NotFoundException('NOT_FOUND');
+
+        // Only show participant lists for approved/active/closed tournaments
+        if (!['APPROVED', 'ACTIVE', 'CLOSED'].includes(tournament.status)) {
+            return {
+                data: { participants: [], meta: { status: tournament.status, message: 'Registration not yet open' } },
+            };
+        }
+
+        const registrations = await this.prisma.registration.findMany({
+            where: { tournamentId, status: 'CONFIRMED' },
+            include: { category: { select: { name: true } } },
+            orderBy: [{ category: { minAge: 'asc' } }, { entryNumber: 'asc' }],
+        });
+
+        const participants = registrations.map(r => ({
+            entry_number: r.entryNumber,
+            player_name: r.playerName,
+            city: r.city ?? '—',
+            category: r.category.name,
+        }));
+
+        const byCategory = tournament.categories.map(c => ({
+            name: c.name,
+            registered: c.registeredCount,
+            max_seats: c.maxSeats,
+            seats_remaining: Math.max(0, c.maxSeats - c.registeredCount),
+        }));
+
+        return {
+            data: {
+                participants,
+                meta: {
+                    total_confirmed: participants.length,
+                    total_seats: tournament.categories.reduce((s, c) => s + c.maxSeats, 0),
+                    by_category: byCategory,
+                },
+            },
+        };
+    }
+
     async getStatus(entryNumber: string) {
         const reg = await this.prisma.registration.findUnique({
             where: { entryNumber },
