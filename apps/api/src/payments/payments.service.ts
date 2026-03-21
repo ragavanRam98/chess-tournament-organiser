@@ -91,7 +91,7 @@ export class PaymentsService {
     async processRefund(registrationId: string): Promise<{ refunded: boolean; refundId?: string }> {
         const payment = await this.prisma.payment.findUnique({
             where: { registrationId },
-            include: { registration: { select: { status: true, entryNumber: true, tournamentId: true } } },
+            include: { registration: { select: { status: true, entryNumber: true, tournamentId: true, categoryId: true } } },
         });
 
         if (!payment || payment.status !== 'PAID' || !payment.razorpayPaymentId) {
@@ -110,6 +110,10 @@ export class PaymentsService {
                 this.prisma.registration.update({
                     where: { id: registrationId },
                     data: { status: 'CANCELLED' },
+                }),
+                this.prisma.category.update({
+                    where: { id: payment.registration.categoryId },
+                    data: { registeredCount: { decrement: 1 } },
                 }),
             ]);
 

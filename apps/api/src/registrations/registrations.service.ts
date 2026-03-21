@@ -56,7 +56,7 @@ export class RegistrationsService {
             const seqResult = await tx.$queryRaw<[{ nextval: bigint }]>`SELECT nextval('entry_number_seq')`;
             const seq = seqResult[0].nextval.toString().padStart(6, '0');
             const year = new Date().getFullYear();
-            const entryNumber = `ECA-${year}-${seq}`;
+            const entryNumber = `KS-${year}-${seq}`;
 
             const reg = await tx.registration.create({
                 data: {

@@ -110,7 +110,7 @@ export class PaymentReconcileProcessor extends WorkerHost {
       where: { registrationId },
       include: {
         registration: {
-          select: { status: true, entryNumber: true, tournamentId: true },
+          select: { status: true, entryNumber: true, tournamentId: true, categoryId: true },
           include: { tournament: { select: { title: true } } },
         },
       },
@@ -143,6 +143,10 @@ export class PaymentReconcileProcessor extends WorkerHost {
       this.prisma.registration.update({
         where: { id: registrationId },
         data: { status: 'CANCELLED' },
+      }),
+      this.prisma.category.update({
+        where: { id: payment.registration.categoryId },
+        data: { registeredCount: { decrement: 1 } },
       }),
     ]);
 

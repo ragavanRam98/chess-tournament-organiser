@@ -17,8 +17,9 @@ function formatDate(d: string) {
 const statusMap: Record<string, { label: string; cls: string }> = {
   DRAFT: { label: 'Draft', cls: 'badge-neutral' },
   PENDING_APPROVAL: { label: 'Pending Approval', cls: 'badge-warning' },
+  APPROVED: { label: 'Approved', cls: 'badge-info' },
   ACTIVE: { label: 'Active', cls: 'badge-success' },
-  COMPLETED: { label: 'Completed', cls: 'badge-info' },
+  CLOSED: { label: 'Closed', cls: 'badge-neutral' },
   CANCELLED: { label: 'Cancelled', cls: 'badge-danger' },
   REJECTED: { label: 'Rejected', cls: 'badge-danger' },
 };

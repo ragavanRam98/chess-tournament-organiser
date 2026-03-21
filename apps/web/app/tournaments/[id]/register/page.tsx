@@ -56,12 +56,17 @@ export default function RegistrationPage() {
     setError('');
 
     try {
+      // Normalize phone to E.164: if user enters 10 digits without +91, prepend it
+      let phone = form.phone.replace(/[\s\-()]/g, '');
+      if (/^\d{10}$/.test(phone)) phone = `+91${phone}`;
+      else if (!phone.startsWith('+')) phone = `+${phone}`;
+
       const payload = {
         tournamentId,
         categoryId: form.categoryId,
         playerName: form.playerName,
         playerDob: form.playerDob,
-        phone: form.phone,
+        phone,
         email: form.email || undefined,
         city: form.city || undefined,
         fideId: form.fideId || undefined,
@@ -211,7 +216,7 @@ export default function RegistrationPage() {
             {/* Phone */}
             <div className="form-group">
               <label className="form-label">Phone Number *</label>
-              <input type="tel" name="phone" value={form.phone} onChange={handleChange} required className="form-input" placeholder="+91 9876543210" pattern="[\+]?[0-9]{10,15}" />
+              <input type="tel" name="phone" value={form.phone} onChange={handleChange} required className="form-input" placeholder="9876543210 or +919876543210" pattern="[\+]?[0-9]{10,15}" />
             </div>
 
             {/* Email */}

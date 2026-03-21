@@ -216,7 +216,7 @@ model Category {
 }
 
 /// A player's registration for a specific tournament category.
-/// entry_number is a human-readable sequential ID (e.g., ECA-2026-000001).
+/// entry_number is a human-readable sequential ID (e.g., KS-2026-000001).
 /// expires_at implements a 2-hour pending payment window.
 model Registration {
   id            String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid

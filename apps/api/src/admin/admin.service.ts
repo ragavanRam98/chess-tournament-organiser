@@ -76,7 +76,7 @@ export class AdminService {
         return { data: organizers, meta: { total, page, limit } };
     }
 
-    async verifyOrganizer(id: string, body: unknown) {
+    async verifyOrganizer(id: string, adminUserId: string) {
         const organizer = await this.prisma.organizer.findUnique({
             where: { id },
             include: { user: true },
@@ -86,8 +86,6 @@ export class AdminService {
             throw new ConflictException('Organizer is already verified');
         }
 
-        const b = body as { actingUserId: string };
-
         await this.prisma.$transaction([
             this.prisma.user.update({
                 where: { id: organizer.userId },
@@ -95,7 +93,7 @@ export class AdminService {
             }),
             this.prisma.organizer.update({
                 where: { id },
-                data: { verifiedAt: new Date(), verifiedById: b.actingUserId },
+                data: { verifiedAt: new Date(), verifiedById: adminUserId },
             }),
             this.prisma.auditLog.create({
                 data: {
@@ -104,7 +102,7 @@ export class AdminService {
                     action: 'VERIFIED',
                     oldValue: { status: organizer.user.status } as any,
                     newValue: { status: 'ACTIVE' } as any,
-                    performedById: b.actingUserId,
+                    performedById: adminUserId,
                 },
             }),
         ]);

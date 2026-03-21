@@ -14,15 +14,17 @@ export class AdminController {
     listTournaments(@Query() q: unknown) { return this.adminService.listTournaments(q); }
 
     @Patch('tournaments/:id/status')
-    updateTournamentStatus(@Param('id') id: string, @Body() body: unknown, @Query('actingUserId') uid: string) {
-        return this.adminService.updateTournamentStatus(id, body, uid);
+    updateTournamentStatus(@Param('id') id: string, @Body() body: unknown, @Req() req: any) {
+        return this.adminService.updateTournamentStatus(id, body, req.user?.sub ?? req.user?.id);
     }
 
     @Get('organizers')
     listOrganizers(@Query() q: unknown) { return this.adminService.listOrganizers(q); }
 
     @Patch('organizers/:id/verify')
-    verifyOrganizer(@Param('id') id: string, @Body() body: unknown) { return this.adminService.verifyOrganizer(id, body); }
+    verifyOrganizer(@Param('id') id: string, @Req() req: any) {
+        return this.adminService.verifyOrganizer(id, req.user?.sub ?? req.user?.id);
+    }
 
     @Get('analytics')
     analytics() { return this.adminService.analytics(); }

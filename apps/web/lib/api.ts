@@ -101,12 +101,11 @@ export async function apiFetch<T>(
       if (retryRes.ok) return retryRes.json();
       throw await parseError(retryRes);
     }
-    // Refresh failed — clear token
+    // Refresh failed — read role BEFORE clearing, then redirect
+    const cached = getUserInfo();
     setAccessToken(null);
     setUserInfo(null);
     if (typeof window !== 'undefined') {
-      // Route to the correct login page based on the cached role.
-      const cached = getUserInfo();
       window.location.href = cached?.role === 'SUPER_ADMIN' ? '/admin' : '/organizer/login';
     }
     throw new Error('Session expired');
