@@ -45,6 +45,8 @@ export function setUserInfo(info: UserInfo | null) {
   } else {
     sessionStorage.removeItem(USER_INFO_KEY);
   }
+  // Notify NavHeader (and any other listener) that auth state changed
+  window.dispatchEvent(new CustomEvent('ks-auth-change'));
 }
 
 export function getUserInfo(): UserInfo | null {

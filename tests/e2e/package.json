@@ -1,0 +1,14 @@
+{
+  "name": "kingsquare-e2e-qa",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "qa": "playwright test",
+    "qa:headed": "playwright test --headed",
+    "qa:debug": "playwright test --debug",
+    "qa:report": "playwright show-report reports/html"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.42.0"
+  }
+}

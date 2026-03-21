@@ -47,11 +47,13 @@ function initials(name: string): string {
 
 export default function NavHeader() {
   const [user, setUser] = useState<UserInfo | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // On mount: read cached user info OR fetch it if a valid token exists.
+  // Set mounted=true so we don't flash the "Sign in" button during SSR→client hydration.
   useEffect(() => {
     const cached = getUserInfo();
     if (cached) {
@@ -59,6 +61,15 @@ export default function NavHeader() {
     } else if (getAccessToken()) {
       fetchAndCacheUserInfo().then(setUser).catch(() => null);
     }
+    setMounted(true);
+
+    // Listen for auth changes (e.g. inline admin login on same page)
+    const handleAuthChange = () => {
+      const updated = getUserInfo();
+      setUser(updated);
+    };
+    window.addEventListener('ks-auth-change', handleAuthChange);
+    return () => window.removeEventListener('ks-auth-change', handleAuthChange);
   }, []);
 
   // Close dropdown on outside click.
@@ -99,7 +110,10 @@ export default function NavHeader() {
             </ul>
           </nav>
 
-          {user ? (
+          {!mounted ? (
+            /* ── Not yet hydrated — show neutral placeholder to avoid sign-in flash ── */
+            <div style={{ width: 80, height: 36 }} />
+          ) : user ? (
             /* ── Authenticated: avatar + dropdown ── */
             <div ref={dropdownRef} style={{ position: 'relative' }}>
               <button

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, getAccessToken, setAccessToken } from '@/lib/api';
+import { api, getAccessToken, setAccessToken, fetchAndCacheUserInfo } from '@/lib/api';
 
 interface Tournament {
   id: string; title: string; city: string; venue: string;
@@ -27,6 +27,8 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
     try {
       const res = await api.post<{ access_token: string }>('/auth/login', { email, password });
       setAccessToken(res.data.access_token);
+      // Cache user info so NavHeader shows profile avatar instead of "Sign in"
+      fetchAndCacheUserInfo().catch(() => undefined);
       onLogin();
     } catch (err: any) {
       setError(err?.error?.message ?? 'Invalid credentials');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { api, getAccessToken, setAccessToken } from '@/lib/api';
+import { api, getAccessToken, setAccessToken, fetchAndCacheUserInfo } from '@/lib/api';
 
 interface AuditLog {
   id: string;
@@ -53,6 +53,7 @@ function AdminLogin({ onLogin }: { onLogin: () => void }) {
     try {
       const res = await api.post<{ access_token: string }>('/auth/login', { email, password });
       setAccessToken(res.data.access_token);
+      fetchAndCacheUserInfo().catch(() => undefined);
       onLogin();
     } catch (err: any) {
       setError(err?.error?.message ?? 'Invalid credentials');

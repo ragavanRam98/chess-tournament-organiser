@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, getAccessToken } from '@/lib/api';
 
 interface CategoryInput {
@@ -21,11 +21,17 @@ export default function CreateTournamentPage() {
   const [posterPreview, setPosterPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [authChecked, setAuthChecked] = useState(false);
 
-  if (!getAccessToken()) {
-    if (typeof window !== 'undefined') window.location.href = '/organizer/login';
-    return null;
-  }
+  // Auth guard — must run in useEffect to avoid hydration mismatch
+  // (sessionStorage is not available on the server)
+  useEffect(() => {
+    if (!getAccessToken()) {
+      window.location.href = '/organizer/login';
+      return;
+    }
+    setAuthChecked(true);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm(p => ({ ...p, [e.target.name]: e.target.value }));
@@ -99,6 +105,14 @@ export default function CreateTournamentPage() {
       setSubmitting(false);
     }
   };
+
+  if (!authChecked) {
+    return (
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px', textAlign: 'center' }}>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
