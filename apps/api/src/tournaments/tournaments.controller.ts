@@ -41,12 +41,12 @@ export class TournamentsController {
         return this.tournamentsService.findOneForOrganizer(id, req.user.organizerId);
     }
 
-    /** GET /organizer/tournaments/:id/registrations — full participant list for organizer with FIDE verification badges */
+    /** GET /organizer/tournaments/:id/registrations — paginated participant list with search/filter/sort */
     @Get('organizer/tournaments/:id/registrations')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles('ORGANIZER')
-    listRegistrations(@Req() req: any, @Param('id') id: string) {
-        return this.tournamentsService.listRegistrationsForOrganizer(id, req.user.organizerId);
+    listRegistrations(@Req() req: any, @Param('id') id: string, @Query() query: Record<string, string>) {
+        return this.tournamentsService.listRegistrationsForOrganizer(id, req.user.organizerId, query);
     }
 
     @Patch('organizer/tournaments/:id')

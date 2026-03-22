@@ -95,19 +95,53 @@ export class TournamentsService {
 
     // ── Organizer: List registrations for a tournament ─────────────────────────
 
-    async listRegistrationsForOrganizer(tournamentId: string, organizerId: string) {
+    async listRegistrationsForOrganizer(tournamentId: string, organizerId: string, query: Record<string, string>) {
         // Verify ownership
         const tournament = await this.prisma.tournament.findFirst({
             where: { id: tournamentId, organizerId },
-            select: { id: true },
+            include: { categories: { select: { id: true, name: true, maxSeats: true, registeredCount: true }, orderBy: { minAge: 'asc' } } },
         });
         if (!tournament) throw new NotFoundException('NOT_FOUND');
 
-        const registrations = await this.prisma.registration.findMany({
-            where: { tournamentId },
-            include: { category: { select: { name: true } } },
-            orderBy: { registeredAt: 'desc' },
-        });
+        // Build where clause
+        const where: Record<string, any> = { tournamentId };
+        if (query.search) {
+            where.playerName = { contains: query.search, mode: 'insensitive' };
+        }
+        if (query.status) {
+            where.status = query.status;
+        }
+        if (query.categoryId) {
+            where.categoryId = query.categoryId;
+        }
+        if (query.fide === 'rated') {
+            where.fideId = { not: null };
+        } else if (query.fide === 'unrated') {
+            where.fideId = null;
+        }
+
+        // Sort
+        const sortBy = query.sortBy ?? 'registeredAt';
+        const sortDir = query.sortDir === 'asc' ? 'asc' : 'desc';
+        const allowedSortFields = ['entryNumber', 'playerName', 'city', 'status', 'registeredAt', 'fideRating'];
+        const orderField = allowedSortFields.includes(sortBy) ? sortBy : 'registeredAt';
+        const orderBy: Record<string, string> = { [orderField]: sortDir };
+
+        // Pagination
+        const page = Math.max(1, parseInt(query.page ?? '1', 10));
+        const pageSize = Math.min(100, Math.max(1, parseInt(query.pageSize ?? '20', 10)));
+        const skip = (page - 1) * pageSize;
+
+        const [registrations, total] = await this.prisma.$transaction([
+            this.prisma.registration.findMany({
+                where,
+                include: { category: { select: { id: true, name: true } } },
+                orderBy,
+                skip,
+                take: pageSize,
+            }),
+            this.prisma.registration.count({ where }),
+        ]);
 
         // Batch FIDE verification — one query for all unique non-null fideIds
         const fideIds = [...new Set(registrations.map(r => r.fideId).filter(Boolean) as string[])];
@@ -119,6 +153,13 @@ export class TournamentsService {
             });
             verified.forEach(p => verifiedSet.add(p.fideId));
         }
+
+        // Status counts (for tabs)
+        const statusCounts = await this.prisma.registration.groupBy({
+            by: ['status'],
+            where: { tournamentId },
+            _count: true,
+        });
 
         return {
             data: {
@@ -137,6 +178,11 @@ export class TournamentsService {
                     fideRating: r.fideRating,
                     fideVerified: r.fideId ? verifiedSet.has(r.fideId) : null,
                 })),
+                total,
+                page,
+                pageSize,
+                categories: tournament.categories,
+                statusCounts: statusCounts.reduce((acc, s) => { acc[s.status] = s._count; return acc; }, {} as Record<string, number>),
             },
         };
     }

@@ -1,94 +1,230 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { api, getAccessToken } from '@/lib/api';
+import KSTable, {
+  renderStatusBadge,
+  renderFideCell,
+  renderEntryNumber,
+  type KSColumn,
+  type KSTab,
+  type KSFilter,
+  type KSStat,
+} from '@/components/ui/KSTable';
 
 interface Registration {
-  id: string; entryNumber: string; playerName: string; phone: string; email: string | null;
-  city: string | null; status: string; registeredAt: string; confirmedAt: string | null;
-  category: { name: string };
-  fideId: string | null; fideRating: number | null; fideVerified: boolean | null;
+  id: string;
+  entryNumber: string;
+  playerName: string;
+  phone: string;
+  email: string | null;
+  city: string | null;
+  status: string;
+  registeredAt: string;
+  confirmedAt: string | null;
+  category: { id: string; name: string };
+  fideId: string | null;
+  fideRating: number | null;
+  fideVerified: boolean | null;
 }
 
-/** Inline FIDE ID cell with verified / unverified / none badge */
-function FideIdCell({ fideId, fideRating, fideVerified }: { fideId: string | null; fideRating: number | null; fideVerified: boolean | null }) {
-  if (!fideId) return <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>;
-
-  const isVerified = fideVerified === true;
-  const isUnverified = fideVerified === false;
-
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
-      <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{fideId}</span>
-      {isVerified && (
-        <span title="FIDE ID verified in our rating database" style={{
-          background: 'rgba(16,185,129,0.1)', color: '#059669',
-          padding: '1px 6px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
-        }}>✓ Verified</span>
-      )}
-      {isUnverified && (
-        <span title="FIDE ID not found in our rating database — may be unrated or ID is incorrect" style={{
-          background: 'rgba(245,158,11,0.1)', color: '#d97706',
-          padding: '1px 6px', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700,
-        }}>⚠ Unverified</span>
-      )}
-      {fideRating && (
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>({fideRating})</span>
-      )}
-    </span>
-  );
+interface CategoryInfo {
+  id: string;
+  name: string;
+  maxSeats: number;
+  registeredCount: number;
 }
 
-const statusMap: Record<string, { cls: string }> = {
-  CONFIRMED: { cls: 'badge-success' },
-  PENDING_PAYMENT: { cls: 'badge-warning' },
-  CANCELLED: { cls: 'badge-danger' },
-  EXPIRED: { cls: 'badge-neutral' },
-};
+interface RegistrationsResponse {
+  registrations: Registration[];
+  total: number;
+  page: number;
+  pageSize: number;
+  categories: CategoryInfo[];
+  statusCounts: Record<string, number>;
+}
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
+const PAGE_SIZE = 20;
+
+const columns: KSColumn<Registration>[] = [
+  {
+    key: 'entryNumber',
+    label: 'Entry #',
+    sortable: true,
+    width: '140px',
+    render: (v) => renderEntryNumber(v as string),
+  },
+  {
+    key: 'playerName',
+    label: 'Player',
+    sortable: true,
+    render: (v) => <span style={{ fontWeight: 600 }}>{v as string}</span>,
+  },
+  {
+    key: 'category',
+    label: 'Category',
+    width: '130px',
+    render: (_, row) => row.category?.name ?? '',
+  },
+  {
+    key: 'phone',
+    label: 'Phone',
+    width: '130px',
+  },
+  {
+    key: 'city',
+    label: 'City',
+    sortable: true,
+    width: '110px',
+    hideOnMobile: true,
+    render: (v) => (v as string) ?? '—',
+  },
+  {
+    key: 'fideId',
+    label: 'FIDE ID',
+    width: '160px',
+    hideOnMobile: true,
+    render: (_, row) => renderFideCell(row.fideId, row.fideRating, row.fideVerified),
+  },
+  {
+    key: 'status',
+    label: 'Status',
+    sortable: true,
+    width: '120px',
+    render: (v) => renderStatusBadge(v as string),
+  },
+  {
+    key: 'registeredAt',
+    label: 'Date',
+    sortable: true,
+    width: '80px',
+    hideOnMobile: true,
+    render: (v) => formatDate(v as string),
+  },
+];
+
+const statusFilterOptions: KSFilter[] = [
+  {
+    key: 'status',
+    label: 'Status',
+    options: [
+      { value: 'CONFIRMED', label: 'Confirmed', dot: '#3B6D11' },
+      { value: 'PENDING_PAYMENT', label: 'Pending', dot: '#854F0B' },
+      { value: 'CANCELLED', label: 'Cancelled', dot: '#A32D2D' },
+      { value: 'FAILED', label: 'Failed', dot: '#A32D2D' },
+    ],
+  },
+  {
+    key: 'fide',
+    label: 'FIDE',
+    options: [
+      { value: 'rated', label: 'Rated' },
+      { value: 'unrated', label: 'Unrated' },
+    ],
+  },
+];
+
 export default function OrganizerRegistrationsPage() {
   const params = useParams();
   const tournamentId = params.id as string;
-  const [registrations, setRegistrations] = useState<Registration[]>([]);
+
+  const [data, setData] = useState<Registration[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState<Record<string, string>>({});
+  const [sortKey, setSortKey] = useState('registeredAt');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [activeTab, setActiveTab] = useState('all');
+
+  // Metadata from API
+  const [categories, setCategories] = useState<CategoryInfo[]>([]);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
+
+  // Export
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState('');
-  const [filter, setFilter] = useState('');
+
+  const fetchRegistrations = useCallback(async () => {
+    setLoading(true);
+    const qp = new URLSearchParams({
+      page: String(page),
+      pageSize: String(PAGE_SIZE),
+      sortBy: sortKey,
+      sortDir,
+    });
+    if (search) qp.set('search', search);
+    if (filters.status) qp.set('status', filters.status);
+    if (filters.fide) qp.set('fide', filters.fide);
+    if (activeTab !== 'all') qp.set('categoryId', activeTab);
+
+    try {
+      const res = await api.get<RegistrationsResponse>(
+        `/organizer/tournaments/${tournamentId}/registrations?${qp}`,
+      );
+      const d = res.data;
+      setData(d.registrations);
+      setTotal(d.total);
+      if (d.categories) setCategories(d.categories);
+      if (d.statusCounts) setStatusCounts(d.statusCounts);
+    } catch {
+      setData([]);
+      setTotal(0);
+    }
+    setLoading(false);
+  }, [tournamentId, page, search, filters, sortKey, sortDir, activeTab]);
 
   useEffect(() => {
     if (!getAccessToken()) { window.location.href = '/organizer/login'; return; }
-    api.get<any>(`/organizer/tournaments/${tournamentId}/registrations`)
-      .then(res => {
-        const payload = res.data;
-        // API returns { data: { registrations: [...] } }
-        const list = payload?.registrations ?? (Array.isArray(payload) ? payload : []);
-        setRegistrations(list);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [tournamentId]);
+    fetchRegistrations();
+  }, [fetchRegistrations]);
 
-  const filteredRegs = filter
-    ? registrations.filter(r => r.status === filter)
-    : registrations;
+  // Reset page when filters change
+  const handleSearch = useCallback((q: string) => { setSearch(q); setPage(1); }, []);
+  const handleFilterChange = useCallback((f: Record<string, string>) => { setFilters(f); setPage(1); }, []);
+  const handleSortChange = useCallback((key: string, dir: 'asc' | 'desc') => { setSortKey(key); setSortDir(dir); setPage(1); }, []);
+  const handleTabChange = useCallback((tab: string) => { setActiveTab(tab); setPage(1); }, []);
 
+  // Tabs from categories
+  const totalAll = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+  const tabs: KSTab[] = [
+    { key: 'all', label: 'All', count: totalAll },
+    ...categories.map(c => ({ key: c.id, label: c.name, count: c.registeredCount })),
+  ];
+
+  // Stats
+  const totalSeats = categories.reduce((s, c) => s + c.maxSeats, 0);
+  const seatsRemaining = totalSeats - categories.reduce((s, c) => s + c.registeredCount, 0);
+  const stats: KSStat[] = [
+    { label: 'Total Registrations', value: totalAll },
+    { label: 'Confirmed', value: statusCounts.CONFIRMED ?? 0, color: 'green' },
+    { label: 'Pending Payment', value: statusCounts.PENDING_PAYMENT ?? 0, color: 'red' },
+    { label: 'Seats Remaining', value: Math.max(0, seatsRemaining) },
+  ];
+
+  // Export handler
   const handleExport = async () => {
     setExporting(true);
     setExportMsg('');
     try {
-      const res = await api.post<{ export_job_id: string }>(`/organizer/tournaments/${tournamentId}/exports`, { format: 'XLSX' });
+      const res = await api.post<{ export_job_id: string }>(
+        `/organizer/tournaments/${tournamentId}/exports`,
+        { format: 'XLSX' },
+      );
       const jobId = res.data.export_job_id;
       setExportMsg('Export queued — polling for download link...');
 
-      // Poll for completion (max 30 attempts, 3s interval)
       for (let i = 0; i < 30; i++) {
         await new Promise(r => setTimeout(r, 3000));
-        const status = await api.get<any>(`/organizer/exports/${jobId}`);
+        const status = await api.get<{ status: string; download_url?: string }>(
+          `/organizer/exports/${jobId}`,
+        );
         if (status.data.status === 'DONE' && status.data.download_url) {
           setExportMsg('');
           window.open(status.data.download_url, '_blank');
@@ -110,83 +246,54 @@ export default function OrganizerRegistrationsPage() {
 
   return (
     <div className="container" style={{ padding: '40px 24px 80px' }}>
-      <a href="/organizer/dashboard" style={{ display: 'inline-flex', gap: 6, marginBottom: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+      <a
+        href="/organizer/dashboard"
+        style={{ display: 'inline-flex', gap: 6, marginBottom: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}
+      >
         ← Back to Dashboard
       </a>
 
-      <div className="flex-between animate-fadeInUp" style={{ marginBottom: 24, flexWrap: 'wrap', gap: 16 }}>
-        <div>
-          <h1 style={{ fontSize: '1.5rem', marginBottom: 4 }}>Registrations</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{registrations.length} total registrations</p>
-        </div>
-        <button onClick={handleExport} disabled={exporting} className="btn btn-secondary">
-          {exporting ? '📦 Exporting...' : '📥 Export to Excel'}
-        </button>
-      </div>
-
       {exportMsg && (
-        <div style={{ padding: '10px 16px', background: 'var(--brand-blue-glow)', borderRadius: 'var(--radius-md)', marginBottom: 16, fontSize: '0.9rem', color: 'var(--brand-blue)' }}>
+        <div
+          style={{
+            padding: '10px 16px',
+            background: 'var(--brand-blue-glow)',
+            borderRadius: 'var(--radius-md)',
+            marginBottom: 16,
+            fontSize: '0.9rem',
+            color: 'var(--brand-blue)',
+          }}
+        >
           {exportMsg}
         </div>
       )}
 
-      {/* Status filters */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }} className="animate-fadeInUp delay-100">
-        {['', 'CONFIRMED', 'PENDING_PAYMENT', 'CANCELLED', 'EXPIRED'].map(s => (
-          <button key={s} onClick={() => setFilter(s)}
-            className={`btn btn-sm ${filter === s ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ fontSize: '0.8rem' }}>
-            {s || 'All'} {s ? `(${registrations.filter(r => r.status === s).length})` : `(${registrations.length})`}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="skeleton" style={{ height: 300 }} />
-      ) : filteredRegs.length === 0 ? (
-        <div className="empty-state animate-fadeIn">
-          <div className="empty-state-icon">📋</div>
-          <h3>No registrations found</h3>
-        </div>
-      ) : (
-        <div className="table-wrapper animate-fadeInUp delay-200">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Entry #</th>
-                <th>Player</th>
-                <th>Category</th>
-                <th>Phone</th>
-                <th>City</th>
-                <th>FIDE ID</th>
-                <th>Status</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRegs.map(r => {
-                const badge = statusMap[r.status] ?? statusMap.PENDING_PAYMENT;
-                return (
-                  <tr key={r.id}>
-                    <td style={{ fontWeight: 700, fontFamily: "'Inter', sans-serif", color: 'var(--brand-blue)' }}>{r.entryNumber}</td>
-                    <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{r.playerName}</td>
-                    <td>{r.category?.name}</td>
-                    <td>{r.phone}</td>
-                    <td>{r.city ?? '—'}</td>
-                    <td>
-                      <FideIdCell fideId={r.fideId} fideRating={r.fideRating} fideVerified={r.fideVerified} />
-                    </td>
-                    <td>
-                      <span className={`badge ${badge.cls}`}>{r.status.replace('_', ' ')}</span>
-                    </td>
-                    <td>{formatDate(r.registeredAt)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <KSTable<Registration>
+        data={data}
+        columns={columns}
+        title="Registrations"
+        subtitle={`${total} total registrations`}
+        totalCount={total}
+        page={page}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+        onSearch={handleSearch}
+        onFilterChange={handleFilterChange}
+        onSortChange={handleSortChange}
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        searchPlaceholder="Search by player name..."
+        filters={statusFilterOptions}
+        stats={stats}
+        defaultSortKey="registeredAt"
+        defaultSortDir="desc"
+        onExport={handleExport}
+        exportLabel={exporting ? 'Exporting...' : 'Export to Excel'}
+        exportDisabled={exporting}
+        loading={loading}
+        emptyMessage="No registrations found"
+      />
     </div>
   );
 }
