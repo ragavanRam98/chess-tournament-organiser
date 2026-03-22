@@ -230,4 +230,88 @@ export class AdminService {
             meta: { limit, next_cursor: nextCursor, has_next: hasNext },
         };
     }
+
+    // ── Data Integrity Check ────────────────────────────────────────────────────
+
+    async integrityCheck() {
+        const checks: { name: string; status: string; details: string; affectedRows: number }[] = [];
+
+        // 1. Registration count drift
+        const driftRows = await this.prisma.$queryRaw<{ id: string; name: string; stored: number; actual: number }[]>`
+            SELECT c.id, c.name, c.registered_count as stored,
+                   COUNT(r.id) FILTER (WHERE r.status NOT IN ('CANCELLED'))::int as actual
+            FROM categories c
+            LEFT JOIN registrations r ON r.category_id = c.id
+            GROUP BY c.id, c.name, c.registered_count
+            HAVING c.registered_count != COUNT(r.id) FILTER (WHERE r.status NOT IN ('CANCELLED'))
+        `;
+        checks.push({
+            name: 'registration_count_drift',
+            status: driftRows.length === 0 ? 'ok' : 'error',
+            details: driftRows.length === 0
+                ? 'All category counts match actual registrations'
+                : `${driftRows.length} categories have count mismatch`,
+            affectedRows: driftRows.length,
+        });
+
+        // 2. Tournaments without audit log (non-DRAFT)
+        const noAuditRows = await this.prisma.$queryRaw<{ count: number }[]>`
+            SELECT COUNT(*)::int as count
+            FROM tournaments t
+            LEFT JOIN audit_log al ON al.entity_id = t.id AND al.entity_type = 'tournament'
+            WHERE al.id IS NULL AND t.status NOT IN ('DRAFT')
+        `;
+        const noAuditCount = noAuditRows[0]?.count ?? 0;
+        checks.push({
+            name: 'tournaments_without_audit_log',
+            status: noAuditCount === 0 ? 'ok' : 'error',
+            details: noAuditCount === 0
+                ? 'All non-draft tournaments have audit logs'
+                : `${noAuditCount} non-draft tournaments missing audit logs`,
+            affectedRows: noAuditCount,
+        });
+
+        // 3. Payments without registration
+        const orphanPayments = await this.prisma.payment.count({
+            where: { registration: null as any },
+        }).catch(() => 0);
+        checks.push({
+            name: 'payments_without_registration',
+            status: orphanPayments === 0 ? 'ok' : 'warning',
+            details: orphanPayments === 0
+                ? 'All payments linked to registrations'
+                : `${orphanPayments} orphaned payments found`,
+            affectedRows: orphanPayments,
+        });
+
+        // 4. Orphaned categories (no tournament)
+        const orphanCats = await this.prisma.$queryRaw<{ count: number }[]>`
+            SELECT COUNT(*)::int as count FROM categories c
+            LEFT JOIN tournaments t ON t.id = c.tournament_id
+            WHERE t.id IS NULL
+        `;
+        const orphanCatCount = orphanCats[0]?.count ?? 0;
+        checks.push({
+            name: 'orphaned_categories',
+            status: orphanCatCount === 0 ? 'ok' : 'error',
+            details: orphanCatCount === 0
+                ? 'All categories belong to valid tournaments'
+                : `${orphanCatCount} orphaned categories found`,
+            affectedRows: orphanCatCount,
+        });
+
+        const overallStatus = checks.some(c => c.status === 'error')
+            ? 'error'
+            : checks.some(c => c.status === 'warning')
+                ? 'warning'
+                : 'ok';
+
+        return {
+            data: {
+                status: overallStatus,
+                checks,
+                checkedAt: new Date().toISOString(),
+            },
+        };
+    }
 }

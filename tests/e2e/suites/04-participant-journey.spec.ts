@@ -7,7 +7,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { URLS, FIDE, TEST_PLAYER, API_BASE, SEED_TOURNAMENTS } from '../fixtures/seed-data';
+import { URLS, FIDE, TEST_PLAYER, API_BASE } from '../fixtures/seed-data';
 import { captureScreen, collectConsoleErrors } from '../fixtures/helpers';
 
 test.describe('Participant Journey — Player Registration', () => {

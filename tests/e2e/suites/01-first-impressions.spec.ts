@@ -6,7 +6,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { URLS, SEED_TOURNAMENTS } from '../fixtures/seed-data';
+import { URLS } from '../fixtures/seed-data';
 import { collectConsoleErrors, collectAllConsoleErrors, captureScreen, expectNoBrokenImages } from '../fixtures/helpers';
 
 test.describe('First Impressions — New Visitor Experience', () => {

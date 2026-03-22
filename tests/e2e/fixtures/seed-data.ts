@@ -1,6 +1,9 @@
 /**
- * Seed data — extracted from prisma/seed.ts
- * Real credentials and test constants for the E2E QA suite.
+ * Seed data — credentials and test constants for the E2E QA suite.
+ *
+ * NOTE: The database is seeded with user accounts ONLY.
+ * No tournaments are pre-created. Tests that need tournaments
+ * must create them via the UI or API during the test run.
  */
 
 export const USERS = {
@@ -33,25 +36,6 @@ export const URLS = {
 };
 
 export const API_BASE = 'http://localhost:3001/api/v1';
-
-export const SEED_TOURNAMENTS = {
-  chennaiRapid: {
-    title: 'Chennai Rapid Rating Chess Tournament 2026',
-    city: 'Chennai',
-    venue: 'Jawaharlal Nehru Indoor Stadium, Periyamet',
-    status: 'ACTIVE',
-  },
-  tnJunior: {
-    title: 'Tamil Nadu State Junior Chess Championship 2026',
-    city: 'Chennai',
-    status: 'ACTIVE',
-  },
-  coimbatoreOpen: {
-    title: 'Coimbatore Open Classical Rating Tournament 2026',
-    city: 'Coimbatore',
-    status: 'PENDING_APPROVAL',
-  },
-};
 
 export const FIDE = {
   validId: '25059530',

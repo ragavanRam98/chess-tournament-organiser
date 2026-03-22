@@ -36,4 +36,7 @@ export class AdminController {
     refundRegistration(@Param('id') id: string, @Req() req: any) {
         return this.adminService.refundRegistration(id, req.user?.sub ?? req.user?.id);
     }
+
+    @Get('integrity-check')
+    integrityCheck() { return this.adminService.integrityCheck(); }
 }
