@@ -81,8 +81,8 @@ export default function OrganizerRegistrationsPage() {
     setExporting(true);
     setExportMsg('');
     try {
-      const res = await api.post<{ id: string }>(`/organizer/tournaments/${tournamentId}/exports`, { format: 'XLSX' });
-      const jobId = res.data.id;
+      const res = await api.post<{ export_job_id: string }>(`/organizer/tournaments/${tournamentId}/exports`, { format: 'XLSX' });
+      const jobId = res.data.export_job_id;
       setExportMsg('Export queued — polling for download link...');
 
       // Poll for completion (max 30 attempts, 3s interval)

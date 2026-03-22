@@ -14,9 +14,12 @@ export class StorageService {
 
   constructor() {
     this.bucket = process.env.R2_BUCKET_NAME ?? 'chess-exports-dev';
-    const endpoint = process.env.R2_ACCOUNT_ID
-      ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
-      : undefined;
+    const isLocal = process.env.R2_ACCOUNT_ID === 'local';
+    const endpoint = isLocal
+      ? (process.env.R2_PUBLIC_URL ?? 'http://localhost:9000')
+      : process.env.R2_ACCOUNT_ID
+        ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+        : undefined;
 
     this.s3 = new S3Client({
       region: 'auto',
@@ -25,6 +28,8 @@ export class StorageService {
         accessKeyId: process.env.R2_ACCESS_KEY_ID ?? 'dev',
         secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? 'dev',
       },
+      forcePathStyle: isLocal,
+      ...(isLocal && { tls: false }),
     });
   }
 

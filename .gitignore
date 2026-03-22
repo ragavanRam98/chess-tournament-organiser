@@ -44,5 +44,12 @@ coverage/
 prisma/dev.db
 prisma/dev.db-journal
 
+# Playwright E2E
+tests/e2e/node_modules/
+tests/e2e/reports/
+tests/e2e/test-results/
+tests/e2e/.auth/
+tests/e2e/playwright-report/
+
 # Claude Code
 .claude/

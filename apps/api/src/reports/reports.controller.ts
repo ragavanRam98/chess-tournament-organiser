@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Param, Body, Req, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, Req, UseGuards, HttpCode, ParseUUIDPipe } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -18,7 +18,7 @@ export class ReportsController {
 
     /** GET /organizer/exports/:jobId — poll status + get signed download URL */
     @Get('exports/:jobId')
-    status(@Param('jobId') jobId: string, @Req() req: any) {
+    status(@Param('jobId', new ParseUUIDPipe()) jobId: string, @Req() req: any) {
         return this.reportsService.getExportStatus(jobId, req.user.organizerId);
     }
 }

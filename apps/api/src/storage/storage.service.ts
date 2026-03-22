@@ -1,22 +1,40 @@
-import { Injectable } from '@nestjs/common';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, CreateBucketCommand, HeadBucketCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 @Injectable()
-export class StorageService {
+export class StorageService implements OnModuleInit {
+    private readonly logger = new Logger(StorageService.name);
     private readonly s3: S3Client;
     private readonly bucket: string;
+    private readonly isLocal: boolean;
 
     constructor() {
         this.bucket = process.env.R2_BUCKET_NAME!;
+        this.isLocal = process.env.R2_ACCOUNT_ID === 'local';
+        const isLocal = this.isLocal;
         this.s3 = new S3Client({
             region: 'auto',
-            endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+            endpoint: isLocal
+                ? (process.env.R2_PUBLIC_URL ?? 'http://localhost:9000')
+                : `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
             credentials: {
                 accessKeyId: process.env.R2_ACCESS_KEY_ID!,
                 secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
             },
+            forcePathStyle: isLocal,
+            ...(isLocal && { tls: false }),
         });
+    }
+
+    async onModuleInit() {
+        if (!this.isLocal) return;
+        try {
+            await this.s3.send(new HeadBucketCommand({ Bucket: this.bucket }));
+        } catch {
+            this.logger.log(`Creating local MinIO bucket: ${this.bucket}`);
+            await this.s3.send(new CreateBucketCommand({ Bucket: this.bucket }));
+        }
     }
 
     async upload(key: string, body: Buffer, contentType: string): Promise<void> {

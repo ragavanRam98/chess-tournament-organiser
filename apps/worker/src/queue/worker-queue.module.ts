@@ -27,7 +27,7 @@ export class DlqService implements OnModuleInit {
       {},
       {
         repeat: { pattern: '*/15 * * * *' }, // every 15 minutes
-        jobId: 'cron:payment-reconcile',
+        jobId: 'cron-payment-reconcile',
         removeOnFail: false, // S5-5: retain failed jobs for DLQ visibility
         removeOnComplete: true,
       },
@@ -38,7 +38,7 @@ export class DlqService implements OnModuleInit {
       {},
       {
         repeat: { pattern: '*/15 * * * *' },
-        jobId: 'cron:purge-expired',
+        jobId: 'cron-purge-expired',
         removeOnFail: false,
         removeOnComplete: true,
       },
@@ -50,7 +50,7 @@ export class DlqService implements OnModuleInit {
       {},
       {
         repeat: { pattern: '30 20 * * *' }, // 20:30 UTC = 2:00 AM IST
-        jobId: 'cron:cleanup-exports',
+        jobId: 'cron-cleanup-exports',
         removeOnFail: false,
         removeOnComplete: true,
       },
@@ -63,7 +63,7 @@ export class DlqService implements OnModuleInit {
       {},
       {
         repeat: { pattern: '30 21 1 * *' }, // 21:30 UTC on the 1st = 3:00 AM IST on the 2nd
-        jobId: 'cron:sync-fide-ratings',
+        jobId: 'cron-sync-fide-ratings',
         removeOnFail: false,
         removeOnComplete: true,
         // Allow extra attempts — FIDE download can be slow
@@ -99,7 +99,7 @@ export class DlqService implements OnModuleInit {
           JOB_NAMES.SYNC_FIDE_RATINGS,
           { bootstrap: true },
           {
-            jobId: 'bootstrap:fide-sync',
+            jobId: 'bootstrap-fide-sync',
             attempts: 3,
             backoff: { type: 'exponential', delay: 60000 },
             removeOnFail: false,
