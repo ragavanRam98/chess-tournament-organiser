@@ -262,8 +262,7 @@ export default function NavHeader() {
                   <div style={{ padding: '6px 0' }}>
                     {user.role === 'ORGANIZER' && (
                       <>
-                        <DropdownItem href="/organizer/dashboard" icon="🏠" label="Dashboard" onClick={() => setDropdownOpen(false)} />
-                        <DropdownItem href="/organizer/tournaments" icon="🏆" label="My Tournaments" onClick={() => setDropdownOpen(false)} />
+                        <DropdownItem href="/organizer/dashboard" icon="🏆" label="My Tournaments" onClick={() => setDropdownOpen(false)} />
                         <DropdownItem href="/organizer/tournaments/new" icon="+" label="New Tournament" onClick={() => setDropdownOpen(false)} />
                       </>
                     )}

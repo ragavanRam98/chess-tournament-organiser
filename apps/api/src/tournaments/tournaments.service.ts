@@ -412,4 +412,170 @@ export class TournamentsService {
 
         return { data: { id: updated.id, status: updated.status } };
     }
+
+    // ── Organizer Dashboard ─────────────────────────────────────────────────
+
+    async dashboardSummary(organizerId: string) {
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+        // All tournaments for this organizer
+        const tournaments = await this.prisma.tournament.findMany({
+            where: { organizerId },
+            select: { id: true, status: true, createdAt: true },
+        });
+        const tournamentIds = tournaments.map(t => t.id);
+
+        const totalTournaments = tournaments.length;
+        const activeTournaments = tournaments.filter(t => t.status === 'ACTIVE').length;
+        const pendingApprovalCount = tournaments.filter(t => t.status === 'PENDING_APPROVAL').length;
+        const createdThisMonth = tournaments.filter(t => t.createdAt >= startOfMonth).length;
+
+        if (tournamentIds.length === 0) {
+            return {
+                data: {
+                    totalTournaments, activeTournaments, pendingApprovalCount, createdThisMonth,
+                    totalRegistrations: 0, pendingPaymentCount: 0,
+                    totalRevenue: 0, revenueThisMonth: 0, revenueLastMonth: 0, revenueChangePercent: 0,
+                },
+            };
+        }
+
+        // Registration counts
+        const [totalRegistrations, pendingPaymentCount] = await this.prisma.$transaction([
+            this.prisma.registration.count({ where: { tournamentId: { in: tournamentIds } } }),
+            this.prisma.registration.count({ where: { tournamentId: { in: tournamentIds }, status: 'PENDING_PAYMENT' } }),
+        ]);
+
+        // Revenue — sum of payments with status PAID, scoped to organizer's tournaments
+        const totalRevenueResult = await this.prisma.payment.aggregate({
+            _sum: { amountPaise: true },
+            where: { status: 'PAID', registration: { tournamentId: { in: tournamentIds } } },
+        });
+        const totalRevenue = totalRevenueResult._sum.amountPaise ?? 0;
+
+        const revenueThisMonthResult = await this.prisma.payment.aggregate({
+            _sum: { amountPaise: true },
+            where: {
+                status: 'PAID',
+                registration: { tournamentId: { in: tournamentIds } },
+                createdAt: { gte: startOfMonth },
+            },
+        });
+        const revenueThisMonth = revenueThisMonthResult._sum.amountPaise ?? 0;
+
+        const revenueLastMonthResult = await this.prisma.payment.aggregate({
+            _sum: { amountPaise: true },
+            where: {
+                status: 'PAID',
+                registration: { tournamentId: { in: tournamentIds } },
+                createdAt: { gte: startOfLastMonth, lt: startOfMonth },
+            },
+        });
+        const revenueLastMonth = revenueLastMonthResult._sum.amountPaise ?? 0;
+
+        const revenueChangePercent = revenueLastMonth > 0
+            ? Math.round(((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100)
+            : 0;
+
+        return {
+            data: {
+                totalTournaments, activeTournaments, pendingApprovalCount, createdThisMonth,
+                totalRegistrations, pendingPaymentCount,
+                totalRevenue, revenueThisMonth, revenueLastMonth, revenueChangePercent,
+            },
+        };
+    }
+
+    async dashboardRecentRegistrations(organizerId: string, limit: number) {
+        const take = Math.min(10, Math.max(1, limit));
+
+        const registrations = await this.prisma.registration.findMany({
+            where: {
+                tournament: { organizerId },
+                status: { in: ['CONFIRMED', 'PENDING_PAYMENT'] },
+            },
+            orderBy: { registeredAt: 'desc' },
+            take,
+            include: {
+                tournament: { select: { id: true, title: true } },
+            },
+        });
+
+        const now = new Date();
+        return {
+            data: {
+                registrations: registrations.map(r => {
+                    const nameParts = r.playerName.trim().split(/\s+/);
+                    const initials = nameParts.length >= 2
+                        ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
+                        : r.playerName.slice(0, 2).toUpperCase();
+
+                    const diffMs = now.getTime() - new Date(r.registeredAt).getTime();
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    const diffDays = Math.floor(diffMs / 86400000);
+                    let timeAgo: string;
+                    if (diffMins < 60) timeAgo = `${diffMins} min ago`;
+                    else if (diffHours < 24) timeAgo = `${diffHours} hr${diffHours > 1 ? 's' : ''} ago`;
+                    else if (diffDays === 1) timeAgo = 'Yesterday';
+                    else timeAgo = `${diffDays} days ago`;
+
+                    return {
+                        id: r.id,
+                        playerName: r.playerName,
+                        playerInitials: initials,
+                        tournamentName: r.tournament.title,
+                        tournamentId: r.tournament.id,
+                        paymentStatus: r.status,
+                        registeredAt: r.registeredAt,
+                        timeAgo,
+                    };
+                }),
+            },
+        };
+    }
+
+    async dashboardUpcoming(organizerId: string, limit: number) {
+        const take = Math.min(10, Math.max(1, limit));
+        const now = new Date();
+
+        const tournaments = await this.prisma.tournament.findMany({
+            where: {
+                organizerId,
+                startDate: { gte: now },
+                status: { in: ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'ACTIVE'] },
+            },
+            orderBy: { startDate: 'asc' },
+            take,
+            include: {
+                categories: { select: { maxSeats: true, registeredCount: true } },
+            },
+        });
+
+        return {
+            data: {
+                tournaments: tournaments.map(t => {
+                    const totalSeats = t.categories.reduce((s, c) => s + c.maxSeats, 0);
+                    const confirmedRegistrations = t.categories.reduce((s, c) => s + c.registeredCount, 0);
+                    const daysUntil = Math.ceil((new Date(t.startDate).getTime() - now.getTime()) / 86400000);
+                    const needsAttention = t.status === 'PENDING_APPROVAL'
+                        || (t.status === 'APPROVED' && new Date(t.registrationDeadline) < now && confirmedRegistrations === 0);
+
+                    return {
+                        id: t.id,
+                        name: t.title,
+                        startDate: t.startDate,
+                        venue: t.venue,
+                        totalSeats,
+                        confirmedRegistrations,
+                        daysUntil,
+                        status: t.status,
+                        needsAttention,
+                    };
+                }),
+            },
+        };
+    }
 }

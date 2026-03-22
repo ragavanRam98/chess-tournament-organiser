@@ -16,6 +16,29 @@ import { Roles } from '../auth/decorators/roles.decorator';
 export class TournamentsController {
     constructor(private readonly tournamentsService: TournamentsService) { }
 
+    // ── Organizer dashboard endpoints ──────────────────────────────────────────
+
+    @Get('organizer/dashboard/summary')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ORGANIZER')
+    dashboardSummary(@Req() req: any) {
+        return this.tournamentsService.dashboardSummary(req.user.organizerId);
+    }
+
+    @Get('organizer/dashboard/recent-registrations')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ORGANIZER')
+    dashboardRecentRegistrations(@Req() req: any, @Query('limit') limit?: string) {
+        return this.tournamentsService.dashboardRecentRegistrations(req.user.organizerId, parseInt(limit ?? '5', 10));
+    }
+
+    @Get('organizer/dashboard/upcoming')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles('ORGANIZER')
+    dashboardUpcoming(@Req() req: any, @Query('limit') limit?: string) {
+        return this.tournamentsService.dashboardUpcoming(req.user.organizerId, parseInt(limit ?? '5', 10));
+    }
+
     // ── Organizer routes (require ORGANIZER role) ──────────────────────────────
 
     @Get('organizer/tournaments')
