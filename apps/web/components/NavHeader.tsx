@@ -152,7 +152,7 @@ export default function NavHeader() {
                 </span>
 
                 {/* Name + role badge — hide on very small screens */}
-                <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
+                <span className="nav-profile-text" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1 }}>
                   <span
                     style={{
                       fontWeight: 600,
@@ -181,6 +181,7 @@ export default function NavHeader() {
 
                 {/* Chevron */}
                 <svg
+                  className="nav-profile-text"
                   width="12" height="12" viewBox="0 0 12 12" fill="none"
                   style={{
                     color: 'var(--text-muted)',

@@ -17,6 +17,7 @@ export class DlqService implements OnModuleInit {
     @InjectQueue(QUEUE_NAMES.NOTIFICATIONS) private notificationsQueue: Queue,
     @InjectQueue(QUEUE_NAMES.EXPORTS) private exportsQueue: Queue,
     @InjectQueue(QUEUE_NAMES.CLEANUP) private cleanupQueue: Queue,
+    @InjectQueue(QUEUE_NAMES.CHESS_RESULTS) private chessResultsQueue: Queue,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -56,6 +57,18 @@ export class DlqService implements OnModuleInit {
       },
     );
 
+    // Chess-Results sync — every 15 minutes
+    await this.chessResultsQueue.add(
+      JOB_NAMES.SYNC_CHESS_RESULTS,
+      {},
+      {
+        repeat: { pattern: '*/15 * * * *' },
+        jobId: 'cron-sync-chess-results',
+        removeOnFail: false,
+        removeOnComplete: true,
+      },
+    );
+
     // GAP 4: SYNC_FIDE_RATINGS — monthly on the 1st at 3 AM IST (21:30 UTC previous day).
     // Uses the CLEANUP queue (low priority). FIDE publishes fresh lists on the 1st each month.
     await this.cleanupQueue.add(
@@ -78,6 +91,7 @@ export class DlqService implements OnModuleInit {
       { name: QUEUE_NAMES.NOTIFICATIONS, q: this.notificationsQueue },
       { name: QUEUE_NAMES.EXPORTS, q: this.exportsQueue },
       { name: QUEUE_NAMES.CLEANUP, q: this.cleanupQueue },
+      { name: QUEUE_NAMES.CHESS_RESULTS, q: this.chessResultsQueue },
     ];
 
     for (const { name, q } of queues) {
@@ -132,6 +146,7 @@ export class DlqService implements OnModuleInit {
       { name: QUEUE_NAMES.NOTIFICATIONS },
       { name: QUEUE_NAMES.EXPORTS },
       { name: QUEUE_NAMES.CLEANUP },
+      { name: QUEUE_NAMES.CHESS_RESULTS },
     ),
   ],
   providers: [DlqService],

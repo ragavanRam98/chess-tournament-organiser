@@ -14,6 +14,7 @@ import { AdminModule } from './admin/admin.module';
 import { QueueModule } from './queue/queue.module';
 import { StorageModule } from './storage/storage.module';
 import { FideModule } from './fide/fide.module';
+import { ChessResultsModule } from './chess-results/chess-results.module';
 import { HealthController } from './health/health.controller';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 
@@ -46,6 +47,7 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
         NotificationsModule,
         AdminModule,
         FideModule,
+        ChessResultsModule,
     ],
     controllers: [HealthController],
     providers: [

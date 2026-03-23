@@ -14,12 +14,14 @@ export class QueueService {
         @InjectQueue(QUEUE_NAMES.NOTIFICATIONS) private notificationsQueue: Queue,
         @InjectQueue(QUEUE_NAMES.EXPORTS) private exportsQueue: Queue,
         @InjectQueue(QUEUE_NAMES.CLEANUP) private cleanupQueue: Queue,
+        @InjectQueue(QUEUE_NAMES.CHESS_RESULTS) private chessResultsQueue: Queue,
     ) {
         this.queues = {
             [QUEUE_NAMES.PAYMENTS]: paymentsQueue,
             [QUEUE_NAMES.NOTIFICATIONS]: notificationsQueue,
             [QUEUE_NAMES.EXPORTS]: exportsQueue,
             [QUEUE_NAMES.CLEANUP]: cleanupQueue,
+            [QUEUE_NAMES.CHESS_RESULTS]: chessResultsQueue,
         };
     }
 

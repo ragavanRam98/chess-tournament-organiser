@@ -36,6 +36,15 @@ interface CategoryInfo {
   registeredCount: number;
 }
 
+interface ChessResultsLink {
+  id: string;
+  chessResultsUrl: string;
+  syncStatus: string;
+  lastSyncedAt: string | null;
+  syncError: string | null;
+  category: { id: string; name: string } | null;
+}
+
 interface RegistrationsResponse {
   registrations: Registration[];
   total: number;
@@ -152,6 +161,13 @@ export default function OrganizerRegistrationsPage() {
   const [exporting, setExporting] = useState(false);
   const [exportMsg, setExportMsg] = useState('');
 
+  // Chess-Results integration
+  const [crLinks, setCrLinks] = useState<ChessResultsLink[]>([]);
+  const [crUrl, setCrUrl] = useState('');
+  const [crCategoryId, setCrCategoryId] = useState('');
+  const [crSaving, setCrSaving] = useState(false);
+  const [crError, setCrError] = useState('');
+
   const fetchRegistrations = useCallback(async () => {
     setLoading(true);
     const qp = new URLSearchParams({
@@ -181,6 +197,13 @@ export default function OrganizerRegistrationsPage() {
     setLoading(false);
   }, [tournamentId, page, pageSize, search, filters, sortKey, sortDir, activeTab]);
 
+  const fetchCrLinks = useCallback(async () => {
+    try {
+      const res = await api.get<ChessResultsLink[]>(`/organizer/tournaments/${tournamentId}/chess-results`);
+      setCrLinks(res.data);
+    } catch { /* ignore */ }
+  }, [tournamentId]);
+
   useEffect(() => {
     const token = getAccessToken();
     if (!token) { window.location.href = '/login'; return; }
@@ -188,7 +211,8 @@ export default function OrganizerRegistrationsPage() {
     const role = getUserInfo()?.role ?? decodeJwtRole(token);
     if (role !== 'ORGANIZER') { window.location.href = '/'; return; }
     fetchRegistrations();
-  }, [fetchRegistrations]);
+    fetchCrLinks();
+  }, [fetchRegistrations, fetchCrLinks]);
 
   // Reset page when filters change
   const handleSearch = useCallback((q: string) => { setSearch(q); setPage(1); }, []);
@@ -300,6 +324,138 @@ export default function OrganizerRegistrationsPage() {
         loading={loading}
         emptyMessage="No registrations found"
       />
+
+      {/* Chess-Results.com Live Integration */}
+      <div className="card card-body" style={{ marginTop: 32 }}>
+        <h3 style={{ fontSize: '1.1rem', marginBottom: 4 }}>Chess-Results.com Live Data</h3>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+          Link your chess-results.com tournament to show live pairings, standings, and cross tables on the public tournament page.
+        </p>
+
+        {crError && (
+          <div style={{ padding: '10px 14px', background: 'rgba(244,63,94,0.08)', borderRadius: 'var(--radius-md)', color: 'var(--brand-rose)', marginBottom: 16, fontSize: '0.85rem' }}>
+            {crError}
+          </div>
+        )}
+
+        {/* Existing links */}
+        {crLinks.length > 0 && (
+          <div style={{ marginBottom: 20 }}>
+            {crLinks.map(link => (
+              <div key={link.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px',
+                background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', marginBottom: 8,
+                fontSize: '0.85rem', flexWrap: 'wrap',
+              }}>
+                <span style={{ fontWeight: 600, minWidth: 80 }}>
+                  {link.category?.name ?? 'All Categories'}
+                </span>
+                <a href={link.chessResultsUrl} target="_blank" rel="noopener noreferrer"
+                  style={{ color: 'var(--brand-blue)', textDecoration: 'underline', flex: 1, minWidth: 120, wordBreak: 'break-all' }}>
+                  {link.chessResultsUrl}
+                </a>
+                <span style={{
+                  padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600,
+                  background: link.syncStatus === 'ACTIVE' || link.syncStatus === 'COMPLETED' ? 'rgba(34,197,94,0.12)' :
+                    link.syncStatus === 'ERROR' ? 'rgba(244,63,94,0.1)' : 'rgba(234,179,8,0.12)',
+                  color: link.syncStatus === 'ACTIVE' || link.syncStatus === 'COMPLETED' ? '#16a34a' :
+                    link.syncStatus === 'ERROR' ? '#dc2626' : '#ca8a04',
+                }}>
+                  {link.syncStatus}
+                </span>
+                {link.lastSyncedAt && (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                    Last sync: {new Date(link.lastSyncedAt).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
+                  </span>
+                )}
+                {link.syncError && (
+                  <span style={{ color: 'var(--brand-rose)', fontSize: '0.78rem', width: '100%' }}>
+                    Error: {link.syncError}
+                  </span>
+                )}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '0.75rem', padding: '4px 10px' }}
+                    onClick={async () => {
+                      try {
+                        await api.post(`/organizer/tournaments/${tournamentId}/chess-results/${link.id}/sync`);
+                        fetchCrLinks();
+                      } catch { /* ignore */ }
+                    }}
+                  >
+                    Re-sync
+                  </button>
+                  <button
+                    className="btn btn-sm"
+                    style={{ fontSize: '0.75rem', padding: '4px 10px', color: 'var(--brand-rose)', background: 'rgba(244,63,94,0.08)', border: 'none' }}
+                    onClick={async () => {
+                      try {
+                        await api.delete(`/organizer/tournaments/${tournamentId}/chess-results/${link.id}`);
+                        fetchCrLinks();
+                      } catch { /* ignore */ }
+                    }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add new link */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div className="form-group" style={{ flex: 2, minWidth: 200, marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>Chess-Results URL</label>
+            <input
+              type="url"
+              value={crUrl}
+              onChange={e => setCrUrl(e.target.value)}
+              className="form-input"
+              placeholder="https://chess-results.com/tnr123456.aspx"
+              style={{ fontSize: '0.85rem' }}
+            />
+          </div>
+          <div className="form-group" style={{ flex: 1, minWidth: 140, marginBottom: 0 }}>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>Category (optional)</label>
+            <select
+              value={crCategoryId}
+              onChange={e => setCrCategoryId(e.target.value)}
+              className="form-input"
+              style={{ fontSize: '0.85rem' }}
+            >
+              <option value="">All Categories</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            className="btn btn-primary btn-sm"
+            disabled={crSaving || !crUrl.trim()}
+            style={{ whiteSpace: 'nowrap', marginBottom: 0 }}
+            onClick={async () => {
+              setCrSaving(true);
+              setCrError('');
+              try {
+                await api.post(`/organizer/tournaments/${tournamentId}/chess-results`, {
+                  chessResultsUrl: crUrl.trim(),
+                  ...(crCategoryId ? { categoryId: crCategoryId } : {}),
+                });
+                setCrUrl('');
+                setCrCategoryId('');
+                fetchCrLinks();
+              } catch (err: any) {
+                setCrError(err?.error?.message ?? 'Failed to add chess-results link');
+              }
+              setCrSaving(false);
+            }}
+          >
+            {crSaving ? 'Adding...' : 'Add Link'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

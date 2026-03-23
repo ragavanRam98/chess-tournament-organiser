@@ -54,6 +54,15 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum ChessResultsSyncStatus {
+  PENDING
+  SYNCING
+  ACTIVE
+  COMPLETED
+  ERROR
+  DISABLED
+}
+
 enum ExportFormat {
   XLSX
   CSV
@@ -189,6 +198,7 @@ model Tournament {
   categories    Category[]
   registrations Registration[]
   exportJobs    ExportJob[]
+  chessResultsLinks ChessResultsLink[]
 
   @@index([organizerId], name: "idx_tournaments_organizer")
   @@index([status], name: "idx_tournaments_status")
@@ -212,6 +222,7 @@ model Category {
   // Relations
   tournament    Tournament     @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
   registrations Registration[]
+  chessResultsLink ChessResultsLink?
 
   @@index([tournamentId], name: "idx_categories_tournament")
   @@map("categories")
@@ -239,10 +250,11 @@ model Registration {
   expiresAt     DateTime?           @map("expires_at") @db.Timestamptz()  // PENDING_PAYMENT entries expire after 2h
 
   // Relations
-  tournament        Tournament        @relation(fields: [tournamentId], references: [id])
-  category          Category          @relation(fields: [categoryId], references: [id])
-  payment           Payment?
-  notificationLogs  NotificationLog[]
+  tournament          Tournament          @relation(fields: [tournamentId], references: [id])
+  category            Category            @relation(fields: [categoryId], references: [id])
+  payment             Payment?
+  notificationLogs    NotificationLog[]
+  chessResultsPlayer  ChessResultsPlayer?
 
   @@index([tournamentId], name: "idx_reg_tournament")
   @@index([tournamentId, status], name: "idx_reg_tournament_status")
@@ -356,4 +368,93 @@ model ExportJob {
   @@index([tournamentId], name: "idx_export_tournament")
   // Partial index for cleanup job — only completed exports approaching expiry
   @@map("export_jobs")
+}
+
+// =============================================================================
+// CHESS-RESULTS.COM LIVE DATA INTEGRATION
+// =============================================================================
+
+/// Stores a chess-results.com link per tournament category.
+/// Organizer pastes a URL like https://s3.chess-results.com/tnr1340226.aspx
+/// We parse out the server + tournament ID for API calls.
+model ChessResultsLink {
+  id                  String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tournamentId        String                   @map("tournament_id") @db.Uuid
+  categoryId          String?                  @unique @map("category_id") @db.Uuid
+  chessResultsServer  String                   @map("chess_results_server") @db.VarChar(10)
+  chessResultsTnrId   String                   @map("chess_results_tnr_id") @db.VarChar(20)
+  chessResultsUrl     String                   @map("chess_results_url") @db.VarChar(500)
+  totalRounds         Int?                     @map("total_rounds")
+  lastSyncedAt        DateTime?                @map("last_synced_at") @db.Timestamptz()
+  lastSyncedRound     Int?                     @map("last_synced_round")
+  syncStatus          ChessResultsSyncStatus   @default(PENDING) @map("sync_status")
+  syncError           String?                  @map("sync_error") @db.Text
+  createdAt           DateTime                 @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt           DateTime                 @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  tournament          Tournament               @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  category            Category?                @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  players             ChessResultsPlayer[]
+  rounds              ChessResultsRound[]
+  crossTable          ChessResultsCrossTable?
+
+  @@unique([tournamentId, categoryId], name: "uq_cr_link_tournament_category")
+  @@index([tournamentId], name: "idx_cr_link_tournament")
+  @@index([syncStatus], name: "idx_cr_link_sync_status")
+  @@map("chess_results_links")
+}
+
+/// Player list from chess-results.com (may differ from KingSquare registrations).
+model ChessResultsPlayer {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  linkId          String    @map("link_id") @db.Uuid
+  startNumber     Int       @map("start_number")
+  name            String    @db.VarChar(255)
+  fideId          String?   @map("fide_id") @db.VarChar(20)
+  rating          Int?
+  federation      String?   @db.VarChar(10)
+  club            String?   @db.VarChar(255)
+  sex             String?   @db.VarChar(5)
+  registrationId  String?   @unique @map("registration_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  link            ChessResultsLink  @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  registration    Registration?     @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+
+  @@unique([linkId, startNumber], name: "uq_cr_player_link_start")
+  @@index([linkId], name: "idx_cr_player_link")
+  @@map("chess_results_players")
+}
+
+/// Stores pairings and standings per round.
+model ChessResultsRound {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  linkId        String    @map("link_id") @db.Uuid
+  roundNumber   Int       @map("round_number")
+  scheduledAt   DateTime? @map("scheduled_at") @db.Timestamptz()
+  pairings      Json?     // [{board, whiteName, whiteRtg, result, blackName, blackRtg}]
+  standings     Json?     // [{rank, startNo, name, rating, points, tb1..tb6}]
+  isFinal       Boolean   @default(false) @map("is_final")
+  fetchedAt     DateTime? @map("fetched_at") @db.Timestamptz()
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  link          ChessResultsLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@unique([linkId, roundNumber], name: "uq_cr_round_link_number")
+  @@index([linkId], name: "idx_cr_round_link")
+  @@map("chess_results_rounds")
+}
+
+/// Complete cross table — stored once after all rounds complete.
+model ChessResultsCrossTable {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  linkId    String   @unique @map("link_id") @db.Uuid
+  data      Json     // [{rank, startNo, name, rating, fed, rounds: [{opponent, color, result}], points}]
+  fetchedAt DateTime @default(now()) @map("fetched_at") @db.Timestamptz()
+
+  link      ChessResultsLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+
+  @@map("chess_results_cross_tables")
 }

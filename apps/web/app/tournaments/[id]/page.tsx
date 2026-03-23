@@ -47,9 +47,46 @@ function formatCurrency(paise: number) {
   return `₹${(paise / 100).toLocaleString('en-IN')}`;
 }
 
+/* ── Live Data Types ────────────────────────────────────────────────── */
+
+interface LivePairing {
+  board: number;
+  whiteName: string;
+  whiteRtg: number | null;
+  result: string;
+  blackName: string;
+  blackRtg: number | null;
+}
+
+interface LiveStanding {
+  rank: number;
+  startNo: number;
+  name: string;
+  rating: number | null;
+  points: number;
+}
+
+interface LiveRound {
+  roundNumber: number;
+  pairings: LivePairing[] | null;
+  standings: LiveStanding[] | null;
+  isFinal: boolean;
+}
+
+interface LiveCategory {
+  id: string;
+  category: { id: string; name: string } | null;
+  chessResultsUrl: string;
+  totalRounds: number | null;
+  lastSyncedAt: string | null;
+  syncStatus: string;
+  rounds: LiveRound[];
+  crossTable: any | null;
+}
+
 /* ── Page ───────────────────────────────────────────────────────────── */
 
-type Tab = 'categories' | 'participants';
+type Tab = 'categories' | 'participants' | 'live';
 
 export default function TournamentDetailPage() {
   const params = useParams();
@@ -64,6 +101,14 @@ export default function TournamentDetailPage() {
   const [participantSearch, setParticipantSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 50;
+
+  // Live data
+  const [liveData, setLiveData] = useState<LiveCategory[] | null>(null);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveChecked, setLiveChecked] = useState(false);
+  const [liveRound, setLiveRound] = useState(1);
+  const [liveView, setLiveView] = useState<'pairings' | 'standings'>('standings');
+  const [liveCatIdx, setLiveCatIdx] = useState(0);
 
   useEffect(() => {
     api.get<Tournament>(`/tournaments/${id}`)
@@ -81,6 +126,36 @@ export default function TournamentDetailPage() {
       .catch(() => setParticipants({ participants: [], meta: { total_confirmed: 0, total_seats: 0, by_category: [], message: 'Failed to load participants' } }))
       .finally(() => setParticipantsLoading(false));
   }, [activeTab, id, participants]);
+
+  // Check for live data availability on mount
+  useEffect(() => {
+    if (liveChecked) return;
+    api.get<LiveCategory[] | null>(`/tournaments/${id}/live`)
+      .then(res => {
+        setLiveData(res.data);
+        if (res.data && res.data.length > 0) {
+          const latest = res.data[0];
+          const maxRd = latest.rounds.length > 0
+            ? Math.max(...latest.rounds.map(r => r.roundNumber))
+            : 1;
+          setLiveRound(maxRd);
+        }
+      })
+      .catch(() => setLiveData(null))
+      .finally(() => setLiveChecked(true));
+  }, [id, liveChecked]);
+
+  // Lazy-load live data when tab is opened (refresh)
+  useEffect(() => {
+    if (activeTab !== 'live' || !liveData) return;
+    setLiveLoading(true);
+    api.get<LiveCategory[] | null>(`/tournaments/${id}/live`)
+      .then(res => {
+        if (res.data) setLiveData(res.data);
+      })
+      .catch(() => {})
+      .finally(() => setLiveLoading(false));
+  }, [activeTab, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── Sort + filter helper ─────────────────────────────────────────── */
   const displayedParticipants = participants
@@ -210,7 +285,11 @@ export default function TournamentDetailPage() {
           borderBottom: '2px solid var(--border-subtle)',
           marginBottom: 24,
         }}>
-          {(['categories', 'participants'] as Tab[]).map(tab => (
+          {(
+            (liveData && liveData.length > 0
+              ? ['categories', 'participants', 'live'] as Tab[]
+              : ['categories', 'participants'] as Tab[])
+          ).map(tab => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -229,7 +308,7 @@ export default function TournamentDetailPage() {
                 whiteSpace: 'nowrap',
               }}
             >
-              {tab === 'categories' ? '🏷 Categories & Seats' : '👥 Participants'}
+              {tab === 'categories' ? '🏷 Categories & Seats' : tab === 'participants' ? '👥 Participants' : '📡 Live'}
               {tab === 'participants' && participants && (
                 <span style={{
                   marginLeft: 6, fontSize: '0.75rem', fontWeight: 700,
@@ -469,6 +548,165 @@ export default function TournamentDetailPage() {
             )}
           </div>
         )}
+
+        {/* ── Tab: Live ────────────────────────────────────────────── */}
+        {activeTab === 'live' && liveData && liveData.length > 0 && (() => {
+          const cat = liveData[liveCatIdx] ?? liveData[0];
+          if (!cat) return null;
+          const roundData = cat.rounds.find(r => r.roundNumber === liveRound);
+          const pairings = (roundData?.pairings ?? []) as LivePairing[];
+          const standings = (roundData?.standings ?? []) as LiveStanding[];
+          const maxRound = cat.totalRounds ?? (cat.rounds.length > 0 ? Math.max(...cat.rounds.map(r => r.roundNumber)) : 1);
+
+          return (
+            <div>
+              {liveLoading && (
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+                  Refreshing live data...
+                </div>
+              )}
+
+              {/* Category selector (if multiple) */}
+              {liveData.length > 1 && (
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+                  {liveData.map((lc, i) => (
+                    <button
+                      key={lc.id}
+                      onClick={() => { setLiveCatIdx(i); setLiveRound(1); }}
+                      className={`btn btn-sm ${liveCatIdx === i ? 'btn-primary' : 'btn-ghost'}`}
+                      style={{ fontSize: '0.8rem' }}
+                    >
+                      {lc.category?.name ?? 'All'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Round selector + view toggle */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, marginRight: 4 }}>Round:</span>
+                  {Array.from({ length: maxRound }, (_, i) => i + 1).map(rd => (
+                    <button
+                      key={rd}
+                      onClick={() => setLiveRound(rd)}
+                      className={`btn btn-sm ${liveRound === rd ? 'btn-primary' : 'btn-ghost'}`}
+                      style={{ minWidth: 32, padding: '4px 8px', fontSize: '0.8rem' }}
+                    >
+                      {rd}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+                  <button
+                    onClick={() => setLiveView('standings')}
+                    className={`btn btn-sm ${liveView === 'standings' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ fontSize: '0.8rem' }}
+                  >
+                    Standings
+                  </button>
+                  <button
+                    onClick={() => setLiveView('pairings')}
+                    className={`btn btn-sm ${liveView === 'pairings' ? 'btn-primary' : 'btn-ghost'}`}
+                    style={{ fontSize: '0.8rem' }}
+                  >
+                    Pairings
+                  </button>
+                </div>
+              </div>
+
+              {/* Standings view */}
+              {liveView === 'standings' && (
+                standings.length > 0 ? (
+                  <div className="table-wrapper">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 50 }}>Rank</th>
+                          <th>Name</th>
+                          <th style={{ width: 70 }}>Rtg</th>
+                          <th style={{ width: 60 }}>Pts</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {standings.map((s, i) => (
+                          <tr key={i}>
+                            <td style={{ fontWeight: 700, color: s.rank <= 3 ? 'var(--brand-gold)' : 'var(--text-primary)' }}>
+                              {s.rank}
+                            </td>
+                            <td style={{ fontWeight: 600 }}>{s.name}</td>
+                            <td style={{ color: 'var(--text-muted)' }}>{s.rating ?? '—'}</td>
+                            <td style={{ fontWeight: 700, color: 'var(--brand-blue)' }}>{s.points}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-state" style={{ padding: '40px 0' }}>
+                    <div className="empty-state-icon">📊</div>
+                    <h3>No standings yet</h3>
+                    <p style={{ marginTop: 8, fontSize: '0.9rem' }}>Standings for round {liveRound} are not available yet.</p>
+                  </div>
+                )
+              )}
+
+              {/* Pairings view */}
+              {liveView === 'pairings' && (
+                pairings.length > 0 ? (
+                  <div className="table-wrapper">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 50 }}>Bd</th>
+                          <th>White</th>
+                          <th style={{ width: 70 }}>Rtg</th>
+                          <th style={{ width: 70, textAlign: 'center' }}>Result</th>
+                          <th style={{ width: 70 }}>Rtg</th>
+                          <th>Black</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pairings.map((p, i) => (
+                          <tr key={i}>
+                            <td style={{ fontWeight: 600 }}>{p.board}</td>
+                            <td style={{ fontWeight: 600 }}>{p.whiteName}</td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.whiteRtg ?? '—'}</td>
+                            <td style={{
+                              textAlign: 'center', fontWeight: 700,
+                              color: p.result.includes('1') || p.result.includes('0')
+                                ? 'var(--brand-emerald)' : 'var(--text-muted)',
+                            }}>
+                              {p.result || '—'}
+                            </td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.blackRtg ?? '—'}</td>
+                            <td style={{ fontWeight: 600 }}>{p.blackName}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="empty-state" style={{ padding: '40px 0' }}>
+                    <div className="empty-state-icon">♟</div>
+                    <h3>No pairings yet</h3>
+                    <p style={{ marginTop: 8, fontSize: '0.9rem' }}>Pairings for round {liveRound} are not available yet.</p>
+                  </div>
+                )
+              )}
+
+              {/* Sync info + link */}
+              <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                {cat.lastSyncedAt && (
+                  <span>Last updated: {new Date(cat.lastSyncedAt).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}</span>
+                )}
+                <a href={cat.chessResultsUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-blue)' }}>
+                  View on chess-results.com →
+                </a>
+              </div>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

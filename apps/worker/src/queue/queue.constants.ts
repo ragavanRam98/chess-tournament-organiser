@@ -6,6 +6,7 @@ export const QUEUE_NAMES = {
   NOTIFICATIONS: 'notifications',
   EXPORTS: 'exports',
   CLEANUP: 'cleanup',
+  CHESS_RESULTS: 'chess-results',
 } as const;
 
 export const JOB_NAMES = {
@@ -17,4 +18,5 @@ export const JOB_NAMES = {
   PURGE_EXPIRED_REGISTRATIONS: 'PURGE_EXPIRED_REGISTRATIONS',
   SYNC_FIDE_RATINGS: 'SYNC_FIDE_RATINGS',
   PROCESS_REFUND: 'PROCESS_REFUND',
+  SYNC_CHESS_RESULTS: 'SYNC_CHESS_RESULTS',
 } as const;

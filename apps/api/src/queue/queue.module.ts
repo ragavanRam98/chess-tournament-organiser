@@ -13,6 +13,7 @@ import { QUEUE_NAMES } from './queue.constants';
             { name: QUEUE_NAMES.NOTIFICATIONS },
             { name: QUEUE_NAMES.EXPORTS },
             { name: QUEUE_NAMES.CLEANUP },
+            { name: QUEUE_NAMES.CHESS_RESULTS },
         ),
     ],
     providers: [QueueService],

@@ -202,13 +202,12 @@
 .tableContainer {
   border: 0.5px solid var(--color-border-tertiary, #e0e0e0);
   border-top: none;
-  overflow: hidden;
+  overflow-x: auto;
   width: 100%;
 }
 .table {
   width: 100%;
   border-collapse: collapse;
-  table-layout: fixed;
 }
 .thead { background: #1A1A1A; }
 .th {
@@ -282,6 +281,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  margin-left: auto;
+  margin-right: 12px;
 }
 .pageSizeLabel {
   font-size: 11px;
