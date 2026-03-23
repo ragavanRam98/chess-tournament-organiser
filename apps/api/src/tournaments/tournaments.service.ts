@@ -88,15 +88,31 @@ export class TournamentsService {
         const limit = Math.min(50, Math.max(1, parseInt(q?.['limit'] ?? '20', 10)));
         const skip = (page - 1) * limit;
 
+        // Build where clause
+        const where: Record<string, any> = { organizerId };
+        if (q?.['search']) {
+            where.title = { contains: q['search'], mode: 'insensitive' };
+        }
+        if (q?.['status']) {
+            where.status = q['status'];
+        }
+
+        // Sort
+        const sortBy = q?.['sortBy'] ?? 'createdAt';
+        const sortDir = q?.['sortDir'] === 'asc' ? 'asc' : 'desc';
+        const allowedSortFields = ['title', 'startDate', 'createdAt', 'status'];
+        const orderField = allowedSortFields.includes(sortBy) ? sortBy : 'createdAt';
+        const orderBy: Record<string, string> = { [orderField]: sortDir };
+
         const [tournaments, total] = await this.prisma.$transaction([
             this.prisma.tournament.findMany({
-                where: { organizerId },
-                orderBy: { createdAt: 'desc' },
+                where,
+                orderBy,
                 skip,
                 take: limit,
                 include: { categories: true },
             }),
-            this.prisma.tournament.count({ where: { organizerId } }),
+            this.prisma.tournament.count({ where }),
         ]);
 
         return { data: tournaments, meta: { total, page, limit } };

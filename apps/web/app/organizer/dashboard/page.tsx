@@ -110,6 +110,7 @@ export default function OrganizerDashboard() {
   const [recent, setRecent] = useState<RecentReg[]>([]);
   const [upcoming, setUpcoming] = useState<UpcomingTournament[]>([]);
   const [displayName, setDisplayName] = useState('');
+  const [liveTournamentIds, setLiveTournamentIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const token = getAccessToken();
@@ -126,12 +127,27 @@ export default function OrganizerDashboard() {
       api.get<{ registrations: RecentReg[] }>('/organizer/dashboard/recent-registrations?limit=5'),
       api.get<{ tournaments: UpcomingTournament[] }>('/organizer/dashboard/upcoming?limit=3'),
     ])
-      .then(([sumRes, tourRes, recentRes, upRes]) => {
+      .then(async ([sumRes, tourRes, recentRes, upRes]) => {
         setSummary(sumRes.data);
         const td = tourRes.data;
-        setTournaments(Array.isArray(td) ? td : td?.tournaments ?? []);
+        const tList: Tournament[] = Array.isArray(td) ? td : td?.tournaments ?? [];
+        setTournaments(tList);
         setRecent(recentRes.data.registrations ?? []);
         setUpcoming(upRes.data.tournaments ?? []);
+
+        // Check which tournaments have active chess-results links
+        const liveIds = new Set<string>();
+        await Promise.all(
+          tList.slice(0, 5).map(async (t) => {
+            try {
+              const res = await api.get<any[]>(`/organizer/tournaments/${t.id}/chess-results`);
+              if (res.data?.some((l: any) => ['ACTIVE', 'SYNCING', 'COMPLETED', 'PENDING'].includes(l.syncStatus))) {
+                liveIds.add(t.id);
+              }
+            } catch { /* ignore */ }
+          }),
+        );
+        setLiveTournamentIds(liveIds);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -222,7 +238,7 @@ export default function OrganizerDashboard() {
             {summary.pendingApprovalCount} tournament{summary.pendingApprovalCount > 1 ? 's' : ''} pending admin approval.
             Players cannot register until approved.
           </span>
-          <a href="/organizer/dashboard" className={css.attentionBtn}>View pending</a>
+          <a href="/organizer/tournaments" className={css.attentionBtn}>View pending</a>
         </div>
       )}
 
@@ -289,7 +305,7 @@ export default function OrganizerDashboard() {
           <div className={css.card} data-testid="tournaments-table">
             <div className={css.cardHeader}>
               <span className={css.cardTitle}>Your tournaments</span>
-              <a href="/organizer/dashboard" className={css.cardLink}>View all →</a>
+              <a href="/organizer/tournaments" className={css.cardLink}>View all →</a>
             </div>
             {tournaments.length === 0 ? (
               <div className={css.emptyInline}>No tournaments yet. Create your first one.</div>
@@ -321,6 +337,17 @@ export default function OrganizerDashboard() {
                           <span className={`${css.badge} ${badgeCls}`}>
                             {STATUS_LABELS[t.status] ?? t.status}
                           </span>
+                          {liveTournamentIds.has(t.id) && (
+                            <span style={{
+                              marginLeft: 6, padding: '1px 6px', borderRadius: 'var(--radius-full, 9999px)',
+                              fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.5px',
+                              background: 'rgba(239,68,68,0.1)', color: '#dc2626',
+                              display: 'inline-flex', alignItems: 'center', gap: 3,
+                            }}>
+                              <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#dc2626', display: 'inline-block' }} />
+                              LIVE
+                            </span>
+                          )}
                         </td>
                         <td className={`${css.dashTd} ${css.colHideMobile}`} style={{ fontWeight: confirmed > 0 ? 500 : undefined, color: confirmed === 0 ? 'var(--color-text-tertiary, #888)' : undefined }}>
                           {confirmed}/{totalSeats}
@@ -356,7 +383,9 @@ export default function OrganizerDashboard() {
                     </div>
                     <div className={css.upcomingInfo}>
                       <div className={css.upcomingName}>{t.name}</div>
-                      <div className={css.upcomingMeta}>{t.venue} · {t.totalSeats} seats</div>
+                      <div className={css.upcomingMeta}>
+                        {new Date(t.startDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} · {t.venue} · {t.totalSeats} seats
+                      </div>
                     </div>
                     <div className={css.upcomingRegs} style={{ color: t.confirmedRegistrations > 0 ? '#C41E1E' : 'var(--color-text-tertiary, #888)' }}>
                       {t.confirmedRegistrations} reg
