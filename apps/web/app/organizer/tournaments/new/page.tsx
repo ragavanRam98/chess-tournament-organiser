@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, getAccessToken } from '@/lib/api';
+import { api, getAccessToken, getUserInfo, decodeJwtRole } from '@/lib/api';
 
 interface CategoryInput {
   key: number; name: string; minAge: string; maxAge: string; entryFeePaise: string; maxSeats: string;
@@ -26,10 +26,11 @@ export default function CreateTournamentPage() {
   // Auth guard — must run in useEffect to avoid hydration mismatch
   // (sessionStorage is not available on the server)
   useEffect(() => {
-    if (!getAccessToken()) {
-      window.location.href = '/organizer/login';
-      return;
-    }
+    const token = getAccessToken();
+    if (!token) { window.location.href = '/organizer/login'; return; }
+    // Verify role — an admin token should not access organizer pages
+    const role = getUserInfo()?.role ?? decodeJwtRole(token);
+    if (role !== 'ORGANIZER') { window.location.href = '/'; return; }
     setAuthChecked(true);
   }, []);
 

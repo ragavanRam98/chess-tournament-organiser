@@ -269,6 +269,8 @@ export default function NavHeader() {
                     {user.role === 'SUPER_ADMIN' && (
                       <>
                         <DropdownItem href="/admin" icon="🛡️" label="Admin Dashboard" onClick={() => setDropdownOpen(false)} />
+                        <DropdownItem href="/admin/tournaments" icon="🏆" label="Tournaments" onClick={() => setDropdownOpen(false)} />
+                        <DropdownItem href="/admin/organizers" icon="👥" label="Organizers" onClick={() => setDropdownOpen(false)} />
                         <DropdownItem href="/admin/audit-logs" icon="📋" label="Audit Logs" onClick={() => setDropdownOpen(false)} />
                       </>
                     )}

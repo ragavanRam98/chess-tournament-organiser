@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { api, getAccessToken, getUserInfo } from '@/lib/api';
+import { api, getAccessToken, getUserInfo, decodeJwtRole } from '@/lib/api';
 import css from './dashboard.module.css';
 
 /* ═══════════════════════════════════════════════════════════════════════
@@ -112,7 +112,11 @@ export default function OrganizerDashboard() {
   const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
-    if (!getAccessToken()) { window.location.href = '/organizer/login'; return; }
+    const token = getAccessToken();
+    if (!token) { window.location.href = '/organizer/login'; return; }
+    // Verify role — an admin token should not access organizer pages
+    const role = getUserInfo()?.role ?? decodeJwtRole(token);
+    if (role !== 'ORGANIZER') { window.location.href = '/'; return; }
     const user = getUserInfo();
     setDisplayName(user?.displayName ?? '');
 

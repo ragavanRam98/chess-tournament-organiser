@@ -27,9 +27,20 @@ export function setAccessToken(token: string | null) {
   if (typeof window === 'undefined') return;
   if (token) {
     sessionStorage.setItem(TOKEN_KEY, token);
+    // Set a non-httpOnly cookie with just the role so Next.js middleware
+    // can enforce route protection server-side. The cookie contains only
+    // the role string (e.g. "ORGANIZER"), not the full JWT.
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      if (payload?.role) {
+        document.cookie = `ks_auth_role=${payload.role}; path=/; SameSite=Lax; max-age=86400`;
+      }
+    } catch { /* ignore decode failure */ }
   } else {
     sessionStorage.removeItem(TOKEN_KEY);
     sessionStorage.removeItem(USER_INFO_KEY);
+    // Clear the auth role cookie
+    document.cookie = 'ks_auth_role=; path=/; max-age=0';
   }
 }
 

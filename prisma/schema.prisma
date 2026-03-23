@@ -88,8 +88,10 @@ enum NotificationStatus {
 
 enum AuditAction {
   APPROVED
+  ACTIVATED
   REJECTED
   CANCELLED
+  CLOSED
   VERIFIED
   SUSPENDED
   PAYMENT_CONFIRMED

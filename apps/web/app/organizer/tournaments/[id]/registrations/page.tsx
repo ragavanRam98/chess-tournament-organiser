@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
-import { api, getAccessToken } from '@/lib/api';
+import { api, getAccessToken, getUserInfo, decodeJwtRole } from '@/lib/api';
 import KSTable, {
   renderStatusBadge,
   renderFideCell,
@@ -181,7 +181,11 @@ export default function OrganizerRegistrationsPage() {
   }, [tournamentId, page, search, filters, sortKey, sortDir, activeTab]);
 
   useEffect(() => {
-    if (!getAccessToken()) { window.location.href = '/organizer/login'; return; }
+    const token = getAccessToken();
+    if (!token) { window.location.href = '/organizer/login'; return; }
+    // Verify role — an admin token should not access organizer pages
+    const role = getUserInfo()?.role ?? decodeJwtRole(token);
+    if (role !== 'ORGANIZER') { window.location.href = '/'; return; }
     fetchRegistrations();
   }, [fetchRegistrations]);
 

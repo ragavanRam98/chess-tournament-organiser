@@ -3,6 +3,7 @@ import {
     ConflictException,
     NotFoundException,
     BadRequestException,
+    Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
@@ -12,6 +13,8 @@ import { differenceInYears } from 'date-fns';
 
 @Injectable()
 export class RegistrationsService {
+    private readonly logger = new Logger(RegistrationsService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly queue: QueueService,
@@ -47,7 +50,7 @@ export class RegistrationsService {
         // 4. Seat locking + insert — SELECT FOR UPDATE prevents concurrent overselling
         const registration = await this.prisma.$transaction(async (tx) => {
             const locked = await tx.$queryRaw<Array<{ registered_count: number; max_seats: number }>>`
-        SELECT registered_count, max_seats FROM categories WHERE id = ${categoryId} FOR UPDATE
+        SELECT registered_count, max_seats FROM categories WHERE id = ${categoryId}::uuid FOR UPDATE
       `;
             const cat = locked[0];
             if (cat.registered_count >= cat.max_seats) throw new ConflictException('SEAT_LIMIT_REACHED');
@@ -74,19 +77,21 @@ export class RegistrationsService {
                 },
             });
 
-            await tx.category.update({
-                where: { id: categoryId },
-                data: { registeredCount: { increment: 1 } },
-            });
+            // registeredCount is updated automatically by the DB trigger (registration_count_sync)
 
             return reg;
         });
 
         // 5. Create Razorpay order and persist Payment record
-        const paymentDetails = await this.payments.createOrder(
-            registration.id,
-            category.entryFeePaise,
-        );
+        let paymentDetails: any = null;
+        try {
+            paymentDetails = await this.payments.createOrder(
+                registration.id,
+                category.entryFeePaise,
+            );
+        } catch (err) {
+            this.logger.warn(`[REGISTER] Razorpay order creation failed for ${registration.entryNumber}: ${(err as Error).message}`);
+        }
 
         return {
             data: {

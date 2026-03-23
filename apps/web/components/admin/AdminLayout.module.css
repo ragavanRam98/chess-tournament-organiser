@@ -1,0 +1,67 @@
+/* ─── Admin Sub-Navigation ────────────────────────────────────────── */
+
+.adminNav {
+  background: #1A1A1A;
+  padding: 0 24px;
+}
+.navInner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 40px;
+}
+.navLink {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.55);
+  padding: 6px 12px;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+}
+.navLink:hover {
+  color: #fff;
+  background: rgba(255,255,255,0.08);
+}
+.navLinkActive {
+  color: #fff;
+  background: rgba(196,30,30,0.2);
+}
+
+/* ─── Login form ─────────────────────────────────────────────────── */
+
+.loginWrap {
+  min-height: calc(100dvh - var(--header-height, 56px));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.loginCard { width: 100%; max-width: 420px; }
+.loginHeader {
+  text-align: center;
+  margin-bottom: 40px;
+}
+.loginIcon {
+  width: 72px; height: 72px;
+  border-radius: var(--radius-lg, 12px);
+  margin: 0 auto 16px;
+  background: linear-gradient(135deg, #dc2626, #b91c1c);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.8rem;
+  box-shadow: 0 8px 24px rgba(185,28,28,0.3);
+  color: #fff;
+}
+.loginTitle { font-size: 1.5rem; margin-bottom: 4px; }
+.loginSub { color: var(--text-muted, #999); }
+.loginError {
+  padding: 12px 16px;
+  background: rgba(244,63,94,0.08);
+  border-radius: var(--radius-md, 8px);
+  color: var(--brand-rose, #f43f5e);
+  margin-bottom: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}

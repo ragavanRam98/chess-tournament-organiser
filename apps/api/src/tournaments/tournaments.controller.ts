@@ -66,7 +66,7 @@ export class TournamentsController {
 
     /** GET /organizer/tournaments/:id/registrations — paginated participant list with search/filter/sort */
     @Get('organizer/tournaments/:id/registrations')
-    @UseGuards(JwtAuthGuard, RolesGuard)
+    @UseGuards(JwtAuthGuard, RolesGuard, OrganizerOwnershipGuard)
     @Roles('ORGANIZER')
     listRegistrations(@Req() req: any, @Param('id') id: string, @Query() query: Record<string, string>) {
         return this.tournamentsService.listRegistrationsForOrganizer(id, req.user.organizerId, query);

@@ -17,7 +17,9 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
-    "db:reset": "prisma migrate reset --force"
+    "db:reset": "prisma migrate reset --force",
+    "demo:seed": "npx tsx scripts/demo-seed.ts",
+    "demo:clean": "npx tsx scripts/demo-cleanup.ts"
   },
   "devDependencies": {
     "turbo": "^2.0.0",

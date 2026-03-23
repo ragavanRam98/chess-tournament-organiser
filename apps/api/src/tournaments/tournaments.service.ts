@@ -13,7 +13,16 @@ import { randomUUID } from 'crypto';
 import * as path from 'path';
 import { CreateTournamentDto } from './dto/create-tournament.dto';
 import { UpdateTournamentDto } from './dto/update-tournament.dto';
-import { TournamentStatus } from '@prisma/client';
+import { TournamentStatus, AuditAction } from '@prisma/client';
+
+/** Map tournament status to audit action name */
+const STATUS_TO_AUDIT_ACTION: Partial<Record<TournamentStatus, AuditAction>> = {
+    APPROVED: 'APPROVED',
+    ACTIVE: 'ACTIVATED',
+    REJECTED: 'REJECTED',
+    CANCELLED: 'CANCELLED',
+    CLOSED: 'CLOSED',
+};
 
 /** Valid forward transitions for tournament status machine */
 const ALLOWED_TRANSITIONS: Record<TournamentStatus, TournamentStatus[]> = {
@@ -383,7 +392,7 @@ export class TournamentsService {
                 data: {
                     entityType: 'tournament',
                     entityId: id,
-                    action: newStatus as any,
+                    action: STATUS_TO_AUDIT_ACTION[newStatus] ?? newStatus as any,
                     oldValue: { status: t.status } as any,
                     newValue: { status: newStatus, reason } as any,
                     performedById: adminUserId,
