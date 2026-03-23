@@ -104,9 +104,6 @@ export default function NavHeader() {
           <nav>
             <ul className="nav-links" style={{ marginRight: 8 }}>
               <li><a href="/" className="nav-link">Tournaments</a></li>
-              {!user && (
-                <li><a href="/login" className="nav-link">Sign in</a></li>
-              )}
             </ul>
           </nav>
 
