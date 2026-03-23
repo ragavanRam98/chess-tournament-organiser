@@ -20,6 +20,11 @@ export function middleware(request: NextRequest) {
   // /admin itself is exempt — AdminLayout shows a login form there.
   if (pathname.startsWith('/admin/')) {
     if (role !== 'SUPER_ADMIN') {
+      // Organizer on admin route → send to organizer dashboard
+      if (role === 'ORGANIZER') {
+        return NextResponse.redirect(new URL('/organizer/dashboard', request.url));
+      }
+      // Anyone else (unauthenticated / unknown) → admin login form
       return NextResponse.redirect(new URL('/admin', request.url));
     }
   }
@@ -30,6 +35,11 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/organizer/tournaments')
   ) {
     if (role !== 'ORGANIZER') {
+      // Admin accidentally on organizer route → send to admin
+      if (role === 'SUPER_ADMIN') {
+        return NextResponse.redirect(new URL('/admin', request.url));
+      }
+      // Anyone else (unauthenticated / unknown) → organizer login
       return NextResponse.redirect(new URL('/organizer/login', request.url));
     }
   }
