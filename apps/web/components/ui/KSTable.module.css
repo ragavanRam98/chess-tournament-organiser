@@ -275,6 +275,26 @@
   border-top: none;
   border-radius: 0 0 8px 8px;
   padding: 10px 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pageSizeSelector {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.pageSizeLabel {
+  font-size: 11px;
+  color: var(--color-text-secondary, #666);
+}
+.pageSizeSelect {
+  font-size: 11px;
+  padding: 3px 8px;
+  border: 0.5px solid var(--color-border-secondary, #d0d0d0);
+  border-radius: 4px;
+  background: var(--color-background-primary, #fff);
+  color: var(--color-text-primary, #222);
+  cursor: pointer;
 }
 .paginationInfo {
   font-size: 11px;
@@ -384,4 +404,5 @@
   .statCard { flex: 1 1 calc(50% - 4px); }
   .searchBox { flex: 1 1 100%; max-width: none; }
   .toolbar { gap: 6px; }
+  .pageSizeSelector { display: none; }
 }

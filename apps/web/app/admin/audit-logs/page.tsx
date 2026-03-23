@@ -119,7 +119,7 @@ const entityFilters: KSFilter[] = [
   },
 ];
 
-const LIMIT = 50;
+const DEFAULT_PAGE_SIZE = 10;
 
 /* ─── Audit Logs Page ──────────────────────────────────────────────── */
 export default function AuditLogsPage() {
@@ -127,6 +127,7 @@ export default function AuditLogsPage() {
   const [totalEstimate, setTotalEstimate] = useState(0);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [entityFilter, setEntityFilter] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
@@ -136,7 +137,7 @@ export default function AuditLogsPage() {
   const loadLogs = useCallback(async (pageNum: number) => {
     setLoading(true);
     const params = new URLSearchParams();
-    params.set('limit', String(LIMIT));
+    params.set('limit', String(pageSize));
     if (entityFilter.entityType) params.set('entityType', entityFilter.entityType);
 
     const cursor = cursorMapRef.current[pageNum];
@@ -146,7 +147,7 @@ export default function AuditLogsPage() {
       const res = await api.get<AuditLog[]>(`/admin/audit-logs?${params}`);
       const rawData = res as unknown as { data: AuditLog[]; meta: Meta };
       const items: AuditLog[] = Array.isArray(rawData.data) ? rawData.data : [];
-      const meta: Meta = rawData.meta ?? { limit: LIMIT, next_cursor: null, has_next: false };
+      const meta: Meta = rawData.meta ?? { limit: pageSize, next_cursor: null, has_next: false };
 
       let filtered = items;
       if (search) {
@@ -165,12 +166,12 @@ export default function AuditLogsPage() {
         cursorMapRef.current[pageNum + 1] = meta.next_cursor;
       }
 
-      setTotalEstimate(meta.has_next ? pageNum * LIMIT + 1 : (pageNum - 1) * LIMIT + items.length);
+      setTotalEstimate(meta.has_next ? pageNum * pageSize + 1 : (pageNum - 1) * pageSize + items.length);
     } catch {
       // auth errors handled by api wrapper redirect
     }
     setLoading(false);
-  }, [entityFilter, search]);
+  }, [entityFilter, search, pageSize]);
 
   useEffect(() => { loadLogs(1); }, []);
 
@@ -178,7 +179,7 @@ export default function AuditLogsPage() {
     cursorMapRef.current = { 1: '' };
     setPage(1);
     loadLogs(1);
-  }, [entityFilter]);
+  }, [entityFilter, pageSize]);
 
   const handlePageChange = (p: number) => { setPage(p); loadLogs(p); };
   const handleFilterChange = useCallback((f: Record<string, string>) => setEntityFilter(f), []);
@@ -200,7 +201,8 @@ export default function AuditLogsPage() {
           subtitle="Track all administrative actions across the platform"
           totalCount={totalEstimate}
           page={page}
-          pageSize={LIMIT}
+          pageSize={pageSize}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(1); cursorMapRef.current = { 1: '' }; }}
           onPageChange={handlePageChange}
           onSearch={handleSearch}
           onFilterChange={handleFilterChange}

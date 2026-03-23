@@ -91,12 +91,13 @@ function VerifyButton({ organizerId, status, onVerified }: {
    Page
    ═══════════════════════════════════════════════════════════════════ */
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function AdminOrganizersPage() {
   const [organizers, setOrganizers] = useState<Organizer[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
@@ -106,7 +107,7 @@ export default function AdminOrganizersPage() {
     setLoading(true);
     const params = new URLSearchParams();
     params.set('page', String(p));
-    params.set('limit', String(PAGE_SIZE));
+    params.set('limit', String(pageSize));
 
     try {
       const res = await api.get<Organizer[]>(`/admin/organizers?${params}`);
@@ -136,7 +137,7 @@ export default function AdminOrganizersPage() {
       // auth errors handled by api wrapper
     }
     setLoading(false);
-  }, [filters, search]);
+  }, [filters, search, pageSize]);
 
   // Load stats
   useEffect(() => {
@@ -150,7 +151,7 @@ export default function AdminOrganizersPage() {
     }).catch(() => {});
   }, []);
 
-  useEffect(() => { loadData(1); setPage(1); }, [filters, search]);
+  useEffect(() => { loadData(1); setPage(1); }, [filters, search, pageSize]);
   useEffect(() => { loadData(page); }, [page]);
 
   const handlePageChange = (p: number) => setPage(p);
@@ -248,7 +249,8 @@ export default function AdminOrganizersPage() {
           stats={stats}
           totalCount={totalCount}
           page={page}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
           onPageChange={handlePageChange}
           onSearch={handleSearch}
           onFilterChange={handleFilterChange}

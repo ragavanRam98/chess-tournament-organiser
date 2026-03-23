@@ -48,6 +48,8 @@ export interface KSTableProps<T> {
   totalCount: number;
   page: number;
   pageSize?: number;
+  pageSizeOptions?: number[];
+  onPageSizeChange?: (size: number) => void;
   onPageChange: (page: number) => void;
   onSearch: (query: string) => void;
   onFilterChange: (filters: Record<string, string>) => void;
@@ -79,6 +81,8 @@ export default function KSTable<T extends object>({
   totalCount,
   page,
   pageSize = 20,
+  pageSizeOptions = [10, 25, 50, 100],
+  onPageSizeChange,
   onPageChange,
   onSearch,
   onFilterChange,
@@ -308,6 +312,25 @@ export default function KSTable<T extends object>({
           <span className={css.paginationInfo}>
             Showing {showFrom}–{showTo} of {totalCount}
           </span>
+
+          {onPageSizeChange && (
+            <div className={css.pageSizeSelector}>
+              <span className={css.pageSizeLabel}>Rows per page:</span>
+              <select
+                className={css.pageSizeSelect}
+                value={pageSize}
+                onChange={(e) => {
+                  onPageSizeChange(Number(e.target.value));
+                  onPageChange(1);
+                }}
+              >
+                {pageSizeOptions.map(size => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className={css.paginationBtns}>
             <button className={css.pageBtn} disabled={page <= 1} onClick={() => onPageChange(page - 1)}>‹</button>
             {getPageNumbers().map((p, i) =>

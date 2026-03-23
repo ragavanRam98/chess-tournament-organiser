@@ -49,7 +49,7 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 10;
 
 const columns: KSColumn<Registration>[] = [
   {
@@ -136,6 +136,7 @@ export default function OrganizerRegistrationsPage() {
   const [data, setData] = useState<Registration[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState<Record<string, string>>({});
@@ -155,7 +156,7 @@ export default function OrganizerRegistrationsPage() {
     setLoading(true);
     const qp = new URLSearchParams({
       page: String(page),
-      pageSize: String(PAGE_SIZE),
+      pageSize: String(pageSize),
       sortBy: sortKey,
       sortDir,
     });
@@ -178,7 +179,7 @@ export default function OrganizerRegistrationsPage() {
       setTotal(0);
     }
     setLoading(false);
-  }, [tournamentId, page, search, filters, sortKey, sortDir, activeTab]);
+  }, [tournamentId, page, pageSize, search, filters, sortKey, sortDir, activeTab]);
 
   useEffect(() => {
     const token = getAccessToken();
@@ -279,7 +280,8 @@ export default function OrganizerRegistrationsPage() {
         subtitle={`${total} total registrations`}
         totalCount={total}
         page={page}
-        pageSize={PAGE_SIZE}
+        pageSize={pageSize}
+        onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
         onPageChange={setPage}
         onSearch={handleSearch}
         onFilterChange={handleFilterChange}

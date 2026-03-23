@@ -180,12 +180,13 @@ function ApproveRejectButtons({ tournamentId }: { tournamentId: string }) {
    Page
    ═══════════════════════════════════════════════════════════════════ */
 
-const PAGE_SIZE = 20;
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function AdminTournamentsPage() {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
@@ -195,7 +196,7 @@ export default function AdminTournamentsPage() {
     setLoading(true);
     const params = new URLSearchParams();
     params.set('page', String(p));
-    params.set('limit', String(PAGE_SIZE));
+    params.set('limit', String(pageSize));
     if (statusFilter.status) params.set('status', statusFilter.status);
 
     try {
@@ -219,7 +220,7 @@ export default function AdminTournamentsPage() {
       // auth errors handled by api wrapper
     }
     setLoading(false);
-  }, [statusFilter, search]);
+  }, [statusFilter, search, pageSize]);
 
   // Load stats
   useEffect(() => {
@@ -233,7 +234,7 @@ export default function AdminTournamentsPage() {
     }).catch(() => {});
   }, []);
 
-  useEffect(() => { loadData(1); setPage(1); }, [statusFilter, search]);
+  useEffect(() => { loadData(1); setPage(1); }, [statusFilter, search, pageSize]);
   useEffect(() => { loadData(page); }, [page]);
 
   const handlePageChange = (p: number) => setPage(p);
@@ -252,7 +253,8 @@ export default function AdminTournamentsPage() {
           stats={stats}
           totalCount={totalCount}
           page={page}
-          pageSize={PAGE_SIZE}
+          pageSize={pageSize}
+          onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
           onPageChange={handlePageChange}
           onSearch={handleSearch}
           onFilterChange={handleFilterChange}
