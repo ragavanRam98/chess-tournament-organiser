@@ -27,7 +27,7 @@ export default function CreateTournamentPage() {
   // (sessionStorage is not available on the server)
   useEffect(() => {
     const token = getAccessToken();
-    if (!token) { window.location.href = '/organizer/login'; return; }
+    if (!token) { window.location.href = '/login'; return; }
     // Verify role — an admin token should not access organizer pages
     const role = getUserInfo()?.role ?? decodeJwtRole(token);
     if (role !== 'ORGANIZER') { window.location.href = '/'; return; }

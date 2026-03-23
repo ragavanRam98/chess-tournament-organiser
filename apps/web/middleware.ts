@@ -6,8 +6,8 @@ import { NextResponse, type NextRequest } from 'next/server';
  * Reads the `ks_auth_role` cookie (set client-side when the JWT is stored)
  * to enforce role-based access before the page even renders:
  *
- *   /admin sub-pages → requires SUPER_ADMIN (exact /admin is allowed — it has its own login form)
- *   /organizer/*     → requires ORGANIZER role (except /organizer/login and /organizer/register)
+ *   /admin/*         → requires SUPER_ADMIN
+ *   /organizer/*     → requires ORGANIZER role
  *
  * This is a first line of defence. Each page still has its own client-side
  * auth check, and the API enforces guards independently.
@@ -16,20 +16,19 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const role = request.cookies.get('ks_auth_role')?.value ?? null;
 
-  // ── Admin sub-pages: must be SUPER_ADMIN ───────────────────────────
-  // /admin itself is exempt — AdminLayout shows a login form there.
-  if (pathname.startsWith('/admin/')) {
+  // ── Admin routes: must be SUPER_ADMIN ──────────────────────────────
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
     if (role !== 'SUPER_ADMIN') {
       // Organizer on admin route → send to organizer dashboard
       if (role === 'ORGANIZER') {
         return NextResponse.redirect(new URL('/organizer/dashboard', request.url));
       }
-      // Anyone else (unauthenticated / unknown) → admin login form
-      return NextResponse.redirect(new URL('/admin', request.url));
+      // Anyone else (unauthenticated / unknown) → unified login
+      return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
-  // ── Organizer routes (except login/register): must be ORGANIZER ────
+  // ── Organizer routes: must be ORGANIZER ────────────────────────────
   if (
     pathname.startsWith('/organizer/dashboard') ||
     pathname.startsWith('/organizer/tournaments')
@@ -39,8 +38,8 @@ export function middleware(request: NextRequest) {
       if (role === 'SUPER_ADMIN') {
         return NextResponse.redirect(new URL('/admin', request.url));
       }
-      // Anyone else (unauthenticated / unknown) → organizer login
-      return NextResponse.redirect(new URL('/organizer/login', request.url));
+      // Anyone else (unauthenticated / unknown) → unified login
+      return NextResponse.redirect(new URL('/login', request.url));
     }
   }
 
@@ -49,6 +48,7 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    '/admin',
     '/admin/:path+',
     '/organizer/dashboard/:path*',
     '/organizer/tournaments/:path*',

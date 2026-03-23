@@ -119,7 +119,7 @@ export async function apiFetch<T>(
     setAccessToken(null);
     setUserInfo(null);
     if (typeof window !== 'undefined') {
-      window.location.href = cached?.role === 'SUPER_ADMIN' ? '/admin' : '/organizer/login';
+      window.location.href = cached?.role === 'SUPER_ADMIN' ? '/admin' : '/login';
     }
     throw new Error('Session expired');
   }

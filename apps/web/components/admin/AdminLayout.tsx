@@ -2,67 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import {
-  api,
   getAccessToken,
-  setAccessToken,
-  fetchAndCacheUserInfo,
   getUserInfo,
   decodeJwtRole,
 } from '@/lib/api';
 import css from './AdminLayout.module.css';
-
-/* ─── Inline Admin Login ─────────────────────────────────────────── */
-
-function AdminLogin({ onLogin }: { onLogin: () => void }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-    try {
-      const res = await api.post<{ access_token: string }>('/auth/login', { email, password });
-      setAccessToken(res.data.access_token);
-      fetchAndCacheUserInfo().catch(() => undefined);
-      onLogin();
-    } catch (err: unknown) {
-      const apiErr = err as { error?: { message?: string } };
-      setError(apiErr?.error?.message ?? 'Invalid credentials');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className={css.loginWrap}>
-      <div className={css.loginCard}>
-        <div className={`${css.loginHeader} animate-fadeInUp`}>
-          <div className={css.loginIcon}>&#128737;</div>
-          <h1 className={css.loginTitle}>Admin Portal</h1>
-          <p className={css.loginSub}>Sign in with super-admin credentials</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="card card-body animate-fadeInUp delay-100" style={{ padding: 32 }}>
-          {error && <div className={css.loginError}>{error}</div>}
-          <div className="form-group" style={{ marginBottom: 20 }}>
-            <label className="form-label">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className="form-input" placeholder="admin@easychess.local" autoFocus />
-          </div>
-          <div className="form-group" style={{ marginBottom: 28 }}>
-            <label className="form-label">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} required className="form-input" placeholder="••••••••" />
-          </div>
-          <button type="submit" disabled={loading} className="btn btn-primary btn-lg" style={{ width: '100%', background: 'linear-gradient(135deg, #dc2626, #b91c1c)' }}>
-            {loading ? 'Signing in...' : 'Sign In as Admin'}
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-}
 
 /* ─── Admin Layout ───────────────────────────────────────────────── */
 
@@ -84,7 +28,7 @@ export default function AdminLayout({ children, activeNav }: AdminLayoutProps) {
 
   useEffect(() => {
     const token = getAccessToken();
-    if (!token) { setLoading(false); return; }
+    if (!token) { window.location.href = '/login'; return; }
 
     // Fast client-side role check — no extra API call.
     // SECURITY NOTE: decodeJwtRole does NOT verify the JWT signature.
@@ -100,11 +44,12 @@ export default function AdminLayout({ children, activeNav }: AdminLayoutProps) {
       setAuthed(true); setLoading(false); return;
     }
 
-    setLoading(false);
+    // Has a token but wrong role — redirect to login
+    window.location.href = '/login';
   }, []);
 
   if (loading) return null; // avoid flash during hydration
-  if (!authed) return <AdminLogin onLogin={() => setAuthed(true)} />;
+  if (!authed) return null; // redirecting to /login
 
   return (
     <>

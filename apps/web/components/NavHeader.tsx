@@ -105,7 +105,7 @@ export default function NavHeader() {
             <ul className="nav-links" style={{ marginRight: 8 }}>
               <li><a href="/" className="nav-link">Tournaments</a></li>
               {!user && (
-                <li><a href="/organizer/login" className="nav-link">Organizer</a></li>
+                <li><a href="/login" className="nav-link">Sign in</a></li>
               )}
             </ul>
           </nav>
@@ -310,7 +310,7 @@ export default function NavHeader() {
             </div>
           ) : (
             /* ── Guest: Sign in button ─────────────── */
-            <a href="/organizer/login" className="btn btn-primary btn-sm">
+            <a href="/login" className="btn btn-primary btn-sm">
               Sign in
             </a>
           )}

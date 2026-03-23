@@ -56,8 +56,8 @@ export default function NotFound() {
           <Link href="/" className="btn btn-primary">
             View Tournaments
           </Link>
-          <Link href="/organizer/login" className="btn btn-secondary">
-            Organizer Login
+          <Link href="/login" className="btn btn-secondary">
+            Sign In
           </Link>
         </div>
       </div>
