@@ -127,7 +127,7 @@ export default function OrganizerDashboard() {
       api.get<{ registrations: RecentReg[] }>('/organizer/dashboard/recent-registrations?limit=5'),
       api.get<{ tournaments: UpcomingTournament[] }>('/organizer/dashboard/upcoming?limit=3'),
     ])
-      .then(async ([sumRes, tourRes, recentRes, upRes]) => {
+      .then(([sumRes, tourRes, recentRes, upRes]) => {
         setSummary(sumRes.data);
         const td = tourRes.data;
         const tList: Tournament[] = Array.isArray(td) ? td : td?.tournaments ?? [];
@@ -135,19 +135,20 @@ export default function OrganizerDashboard() {
         setRecent(recentRes.data.registrations ?? []);
         setUpcoming(upRes.data.tournaments ?? []);
 
-        // Check which tournaments have active chess-results links
-        const liveIds = new Set<string>();
-        await Promise.all(
-          tList.slice(0, 5).map(async (t) => {
-            try {
-              const res = await api.get<any[]>(`/organizer/tournaments/${t.id}/chess-results`);
-              if (res.data?.some((l: any) => ['ACTIVE', 'SYNCING', 'COMPLETED', 'PENDING'].includes(l.syncStatus))) {
-                liveIds.add(t.id);
-              }
-            } catch { /* ignore */ }
-          }),
-        );
-        setLiveTournamentIds(liveIds);
+        // Check chess-results links in background — don't block loading
+        if (tList.length > 0) {
+          const liveIds = new Set<string>();
+          Promise.all(
+            tList.slice(0, 5).map(async (t) => {
+              try {
+                const res = await api.get<any[]>(`/organizer/tournaments/${t.id}/chess-results`);
+                if (res.data?.some((l: any) => ['ACTIVE', 'SYNCING', 'COMPLETED', 'PENDING'].includes(l.syncStatus))) {
+                  liveIds.add(t.id);
+                }
+              } catch { /* ignore */ }
+            }),
+          ).then(() => setLiveTournamentIds(liveIds));
+        }
       })
       .catch(() => {})
       .finally(() => setLoading(false));
