@@ -179,6 +179,10 @@ export class ChessResultsParser {
         .map((__, el) => $(el).text().trim().toLowerCase())
         .get();
 
+      // Skip layout/wrapper tables where a header cell contains newlines
+      // or is excessively long (chess-results wraps all content in a table)
+      if (headers.some((h) => h.includes('\n') || h.length > 100)) return;
+
       // Identify player list table by headers
       const nameIdx = headers.findIndex(
         (h) => h === 'name' || h.includes('name'),
@@ -237,14 +241,14 @@ export class ChessResultsParser {
     return players;
   }
 
-  // ── Parse pairings for a round (art=1) ──────────────────────────────────
+  // ── Parse pairings for a round (art=2) ──────────────────────────────────
 
   async parsePairings(
     server: string,
     tnrId: string,
     round: number,
   ): Promise<CRPairing[]> {
-    const url = this.buildUrl(server, tnrId, 1, `&rd=${round}`);
+    const url = this.buildUrl(server, tnrId, 2, `&rd=${round}`);
     const html = await this.throttledFetch(url);
     const $ = cheerio.load(html);
 
@@ -260,6 +264,8 @@ export class ChessResultsParser {
         .find('th, td')
         .map((__, el) => $(el).text().trim().toLowerCase())
         .get();
+
+      if (headers.some((h) => h.includes('\n') || h.length > 100)) return;
 
       // Identify pairing table: needs "bo." or "board" and "white" or similar
       const boardIdx = headers.findIndex(
@@ -345,14 +351,14 @@ export class ChessResultsParser {
     return pairings;
   }
 
-  // ── Parse standings for a round (art=2) ─────────────────────────────────
+  // ── Parse standings for a round (art=1) ─────────────────────────────────
 
   async parseStandings(
     server: string,
     tnrId: string,
     round: number,
   ): Promise<CRStanding[]> {
-    const url = this.buildUrl(server, tnrId, 2, `&rd=${round}`);
+    const url = this.buildUrl(server, tnrId, 1, `&rd=${round}`);
     const html = await this.throttledFetch(url);
     const $ = cheerio.load(html);
 
@@ -368,6 +374,8 @@ export class ChessResultsParser {
         .find('th, td')
         .map((__, el) => $(el).text().trim().toLowerCase())
         .get();
+
+      if (headers.some((h) => h.includes('\n') || h.length > 100)) return;
 
       // Identify standings table by "rk." or "rank" header
       const rkIdx = headers.findIndex(
@@ -416,12 +424,13 @@ export class ChessResultsParser {
           name: cells[nameIdx] ?? '',
           rating:
             ratingIdx >= 0 ? parseInt(cells[ratingIdx], 10) || null : null,
-          points: parseFloat(cells[ptsIdx]) || 0,
+          points: parseFloat((cells[ptsIdx] ?? '').replace(',', '.')) || 0,
         };
 
         tbIndices.forEach((tbIdx, j) => {
           const key = `tb${j + 1}` as keyof CRStanding;
-          (standing as any)[key] = parseFloat(cells[tbIdx]) || null;
+          (standing as any)[key] =
+            parseFloat((cells[tbIdx] ?? '').replace(',', '.')) || null;
         });
 
         standings.push(standing);
@@ -480,6 +489,8 @@ export class ChessResultsParser {
         .find('th, td')
         .map((__, el) => $(el).text().trim().toLowerCase())
         .get();
+
+      if (headers.some((h) => h.includes('\n') || h.length > 100)) return;
 
       const rkIdx = headers.findIndex(
         (h) => h === 'rk.' || h === 'rank' || h.includes('rank'),
@@ -557,7 +568,10 @@ export class ChessResultsParser {
             ratingIdx >= 0 ? parseInt(cells[ratingIdx], 10) || null : null,
           fed: fedIdx >= 0 ? cells[fedIdx] || null : null,
           rounds,
-          points: ptsIdx >= 0 ? parseFloat(cells[ptsIdx]) || 0 : 0,
+          points:
+            ptsIdx >= 0
+              ? parseFloat((cells[ptsIdx] ?? '').replace(',', '.')) || 0
+              : 0,
         });
       });
     });
