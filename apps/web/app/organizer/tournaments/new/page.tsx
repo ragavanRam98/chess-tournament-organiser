@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api, getAccessToken, getUserInfo, decodeJwtRole } from '@/lib/api';
 
 interface CategoryInput {
@@ -117,9 +118,9 @@ export default function CreateTournamentPage() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '40px 24px 80px' }}>
-      <a href="/organizer/dashboard" style={{ display: 'inline-flex', gap: 6, marginBottom: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+      <Link href="/organizer/dashboard" style={{ display: 'inline-flex', gap: 6, marginBottom: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
         ← Back to Dashboard
-      </a>
+      </Link>
 
       <h1 className="animate-fadeInUp" style={{ fontSize: '1.75rem', marginBottom: 8 }}>Create Tournament</h1>
       <p className="animate-fadeInUp delay-100" style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
 /**
- * Next.js middleware for server-side route protection.
+ * Next.js 16 proxy (formerly middleware) for server-side route protection.
  *
  * Reads the `ks_auth_role` cookie (set client-side when the JWT is stored)
  * to enforce role-based access before the page even renders:
@@ -12,7 +12,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * This is a first line of defence. Each page still has its own client-side
  * auth check, and the API enforces guards independently.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const role = request.cookies.get('ks_auth_role')?.value ?? null;
 

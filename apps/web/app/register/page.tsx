@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 
 interface FormState {
@@ -62,9 +63,9 @@ export default function RegisterPage() {
             Your academy account is <strong>pending admin verification</strong>.<br />
             You&apos;ll be able to sign in once an admin approves your application.
           </p>
-          <a href="/login" className="btn btn-primary" style={{ display: 'inline-block' }}>
+          <Link href="/login" className="btn btn-primary" style={{ display: 'inline-block' }}>
             Back to Sign In
-          </a>
+          </Link>
         </div>
       </div>
     );
@@ -165,7 +166,7 @@ export default function RegisterPage() {
       </form>
 
       <p style={{ textAlign: 'center', marginTop: 20, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-        Already have an account? <a href="/login">Sign in</a>
+        Already have an account? <Link href="/login">Sign in</Link>
       </p>
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import styles from './page.module.css';
 
@@ -84,7 +85,7 @@ export default function HomePage() {
               const minFee = Math.min(...t.categories.map(c => c.entryFeePaise));
 
               return (
-                <a href={`/tournaments/${t.id}`} key={t.id} className={`card ${styles.tournamentCard} animate-fadeInUp`} style={{ animationDelay: `${i * 80}ms` }}>
+                <Link href={`/tournaments/${t.id}`} key={t.id} className={`card ${styles.tournamentCard} animate-fadeInUp`} style={{ animationDelay: `${i * 80}ms` }}>
                   <div className={styles.cardBanner}>
                     <span className={styles.cardCity}>📍 {t.city}</span>
                     {deadline <= 3 && deadline > 0 && (
@@ -127,7 +128,7 @@ export default function HomePage() {
                       <span className="btn btn-primary btn-sm">Register →</span>
                     </div>
                   </div>
-                </a>
+                </Link>
               );
             })}
           </div>

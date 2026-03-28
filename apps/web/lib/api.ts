@@ -98,11 +98,25 @@ export async function apiFetch<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include', // include cookies for refresh token
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+      credentials: 'include', // include cookies for refresh token
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Request timed out after 15 seconds');
+    }
+    throw err;
+  }
 
   // Handle 401 — try token refresh once
   if (res.status === 401 && token) {
@@ -110,7 +124,24 @@ export async function apiFetch<T>(
     if (refreshed) {
       const newToken = getAccessToken();
       headers['Authorization'] = `Bearer ${newToken}`;
-      const retryRes = await fetch(url, { ...options, headers, credentials: 'include' });
+      const retryController = new AbortController();
+      const retryTimeoutId = setTimeout(() => retryController.abort(), 15000);
+      let retryRes: Response;
+      try {
+        retryRes = await fetch(url, {
+          ...options,
+          headers,
+          credentials: 'include',
+          signal: retryController.signal,
+        });
+        clearTimeout(retryTimeoutId);
+      } catch (err) {
+        clearTimeout(retryTimeoutId);
+        if (err instanceof Error && err.name === 'AbortError') {
+          throw new Error('Request timed out after 15 seconds');
+        }
+        throw err;
+      }
       if (retryRes.ok) return retryRes.json();
       throw await parseError(retryRes);
     }
@@ -125,10 +156,10 @@ export async function apiFetch<T>(
   }
 
   if (!res.ok) throw await parseError(res);
-  
+
   // Handle 204 No Content
   if (res.status === 204) return { data: {} as T };
-  
+
   return res.json();
 }
 
@@ -172,7 +203,17 @@ export async function fetchAndCacheUserInfo(): Promise<UserInfo | null> {
   }
 }
 
+let refreshPromise: Promise<boolean> | null = null;
+
 async function tryRefreshToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+  refreshPromise = doRefresh().finally(() => {
+    refreshPromise = null;
+  });
+  return refreshPromise;
+}
+
+async function doRefresh(): Promise<boolean> {
   try {
     const res = await fetch(`${API_BASE}/auth/refresh`, {
       method: 'POST',

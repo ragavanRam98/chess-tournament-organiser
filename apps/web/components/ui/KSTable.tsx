@@ -273,9 +273,9 @@ export default function KSTable<T extends object>({
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <tr key={`skel-${i}`} className={css.tr} data-testid="ks-loading">
-                  {columns.map(col => (
+                  {columns.map((col, j) => (
                     <td key={col.key} className={`${css.td} ${col.hideOnMobile ? css.colHideMobile : ''}`}>
-                      <div className={css.skeletonCell} style={{ width: `${60 + Math.random() * 30}%` }} />
+                      <div className={css.skeletonCell} style={{ width: `${60 + ((i * 7 + j * 13) % 30)}%` }} />
                     </td>
                   ))}
                 </tr>

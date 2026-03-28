@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { api } from '@/lib/api';
 import AdminLayout from '@/components/admin/AdminLayout';
 import css from './admin.module.css';
@@ -98,9 +99,12 @@ export default function AdminDashboard() {
   const [integrityData, setIntegrityData] = useState<IntegrityCheck | null>(null);
   const [integrityOpen, setIntegrityOpen] = useState(false);
   const [integrityLoading, setIntegrityLoading] = useState(false);
+  const [error, setError] = useState(false);
 
   const loadData = useCallback(async () => {
+    console.log('loadData called')
     setLoading(true);
+    setError(false);
     try {
       const [analyticsRes, pendingRes, allRes, orgRes] = await Promise.all([
         api.get<Analytics>('/admin/analytics'),
@@ -120,12 +124,25 @@ export default function AdminDashboard() {
       const oData = orgRes as unknown as { data: Organizer[] };
       setOrganizers(Array.isArray(oData.data) ? oData.data : []);
     } catch {
-      // auth errors handled by api wrapper redirect
+      setError(true);
     }
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+
+    function handlePageShow(event: PageTransitionEvent) {
+      if (event.persisted) {
+        loadData();
+      }
+    }
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, [loadData]);
 
   /* ── Actions ────────────────────────────────────────────────────── */
 
@@ -239,6 +256,22 @@ export default function AdminDashboard() {
     );
   }
 
+  /* ── Error state ─────────────────────────────────────────────────── */
+  if (error) {
+    return (
+      <AdminLayout activeNav="dashboard">
+        <div className={`container ${css.page}`} style={{ textAlign: 'center', paddingTop: 80 }}>
+          <p style={{ color: 'var(--color-text-secondary, #666)', marginBottom: 16 }}>
+            Failed to load dashboard data.
+          </p>
+          <button className={css.btnDark} onClick={loadData}>
+            Retry
+          </button>
+        </div>
+      </AdminLayout>
+    );
+  }
+
   /* ── Page ────────────────────────────────────────────────────────── */
   return (
     <AdminLayout activeNav="dashboard">
@@ -251,7 +284,7 @@ export default function AdminDashboard() {
             <p className={css.headerSub}>KingSquare admin dashboard</p>
           </div>
           <div className={css.headerActions}>
-            <a href="/admin/audit-logs" className={css.btnOutline}>Audit Logs</a>
+            <Link href="/admin/audit-logs" className={css.btnOutline}>Audit Logs</Link>
             <button
               className={css.btnDark}
               onClick={runIntegrityCheck}
@@ -427,7 +460,7 @@ export default function AdminDashboard() {
             <div className={css.card}>
               <div className={css.cardHeader}>
                 <span className={css.cardTitle}>All tournaments</span>
-                <a href="/admin/tournaments" className={css.cardLink}>View all &rarr;</a>
+                <Link href="/admin/tournaments" className={css.cardLink}>View all &rarr;</Link>
               </div>
               {allTournaments.length === 0 ? (
                 <div className={css.emptyInline}>No tournaments yet</div>
@@ -476,7 +509,7 @@ export default function AdminDashboard() {
             <div className={css.card} id="organizers" data-testid="organizers-section">
               <div className={css.cardHeader}>
                 <span className={css.cardTitle}>Organizers</span>
-                <a href="/admin/organizers" className={css.cardLink}>View all &rarr;</a>
+                <Link href="/admin/organizers" className={css.cardLink}>View all &rarr;</Link>
               </div>
 
               {organizers.length === 0 ? (

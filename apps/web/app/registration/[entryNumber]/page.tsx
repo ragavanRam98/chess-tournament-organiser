@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 
@@ -56,7 +57,7 @@ export default function RegistrationConfirmationPage() {
         <div className="empty-state-icon">🔍</div>
         <h3>Registration not found</h3>
         <p style={{ marginTop: 8 }}>Entry number <strong>{entryNumber}</strong> was not found.</p>
-        <a href="/" className="btn btn-primary" style={{ marginTop: 20 }}>← Back to tournaments</a>
+        <Link href="/" className="btn btn-primary" style={{ marginTop: 20 }}>← Back to tournaments</Link>
       </div>
     );
   }
@@ -139,11 +140,11 @@ export default function RegistrationConfirmationPage() {
           <p style={{ color: 'var(--text-secondary)' }}>
             This registration has been cancelled. You can register again for an available tournament.
           </p>
-          <a href="/" className="btn btn-primary" style={{ marginTop: 24 }}>Browse tournaments</a>
+          <Link href="/" className="btn btn-primary" style={{ marginTop: 24 }}>Browse tournaments</Link>
         </div>
       )}
 
-      <a href="/" style={{ display: 'block', marginTop: 32, fontSize: '0.9rem' }}>← Back to tournaments</a>
+      <Link href="/" style={{ display: 'block', marginTop: 32, fontSize: '0.9rem' }}>← Back to tournaments</Link>
     </div>
   );
 }

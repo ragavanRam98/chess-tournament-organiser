@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { api, getAccessToken, getUserInfo, decodeJwtRole } from '@/lib/api';
 import KSTable, {
   renderStatusBadge,
@@ -58,12 +59,12 @@ const columns: KSColumn<Tournament>[] = [
     label: 'Tournament',
     sortable: true,
     render: (v, row) => (
-      <a
+      <Link
         href={`/organizer/tournaments/${row.id}/registrations`}
         style={{ fontWeight: 500, color: 'var(--text-primary)', textDecoration: 'none' }}
       >
         {v as string}
-      </a>
+      </Link>
     ),
   },
   {
@@ -115,9 +116,9 @@ const columns: KSColumn<Tournament>[] = [
       switch (row.status) {
         case 'DRAFT':
           return (
-            <a href={`/organizer/tournaments/${row.id}/registrations`} className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem' }}>
+            <Link href={`/organizer/tournaments/${row.id}/registrations`} className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem' }}>
               Edit
-            </a>
+            </Link>
           );
         case 'PENDING_APPROVAL':
           return (
@@ -128,15 +129,15 @@ const columns: KSColumn<Tournament>[] = [
         case 'APPROVED':
         case 'ACTIVE':
           return (
-            <a href={`/organizer/tournaments/${row.id}/registrations`} className="btn btn-primary btn-sm" style={{ fontSize: '0.75rem' }}>
+            <Link href={`/organizer/tournaments/${row.id}/registrations`} className="btn btn-primary btn-sm" style={{ fontSize: '0.75rem' }}>
               View Registrations
-            </a>
+            </Link>
           );
         default:
           return (
-            <a href={`/organizer/tournaments/${row.id}/registrations`} className="btn btn-ghost btn-sm" style={{ fontSize: '0.75rem' }}>
+            <Link href={`/organizer/tournaments/${row.id}/registrations`} className="btn btn-ghost btn-sm" style={{ fontSize: '0.75rem' }}>
               View
-            </a>
+            </Link>
           );
       }
     },
@@ -254,16 +255,16 @@ export default function OrganizerTournamentsPage() {
   return (
     <div className="container" style={{ padding: '40px 24px 80px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <a href="/organizer/dashboard" style={{ display: 'inline-flex', gap: 6, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+        <Link href="/organizer/dashboard" style={{ display: 'inline-flex', gap: 6, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
           ← Back to Dashboard
-        </a>
-        <a
+        </Link>
+        <Link
           href="/organizer/tournaments/new"
           className="btn btn-primary"
           style={{ fontSize: '0.85rem' }}
         >
           + Create Tournament
-        </a>
+        </Link>
       </div>
 
       <KSTable<Tournament>

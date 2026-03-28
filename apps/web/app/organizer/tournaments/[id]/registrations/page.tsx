@@ -200,7 +200,7 @@ export default function OrganizerRegistrationsPage() {
   const fetchCrLinks = useCallback(async () => {
     try {
       const res = await api.get<ChessResultsLink[]>(`/organizer/tournaments/${tournamentId}/chess-results`);
-      setCrLinks(res.data);
+      setCrLinks(res.data ?? []);
     } catch { /* ignore */ }
   }, [tournamentId]);
 
@@ -436,11 +436,16 @@ export default function OrganizerRegistrationsPage() {
             disabled={crSaving || !crUrl.trim()}
             style={{ whiteSpace: 'nowrap', marginBottom: 0 }}
             onClick={async () => {
-              setCrSaving(true);
               setCrError('');
+              const trimmed = crUrl.trim();
+              if (!/^https?:\/\/(?:\w+\.)?chess-results\.com\/tnr\d+/i.test(trimmed)) {
+                setCrError('Invalid URL. Must be a chess-results.com tournament link (e.g. https://chess-results.com/tnr123456.aspx)');
+                return;
+              }
+              setCrSaving(true);
               try {
                 await api.post(`/organizer/tournaments/${tournamentId}/chess-results`, {
-                  chessResultsUrl: crUrl.trim(),
+                  chessResultsUrl: trimmed,
                   ...(crCategoryId ? { categoryId: crCategoryId } : {}),
                 });
                 setCrUrl('');
@@ -452,7 +457,7 @@ export default function OrganizerRegistrationsPage() {
               setCrSaving(false);
             }}
           >
-            {crSaving ? 'Adding...' : 'Add Link'}
+            {crSaving ? 'Verifying...' : 'Add Link'}
           </button>
         </div>
       </div>

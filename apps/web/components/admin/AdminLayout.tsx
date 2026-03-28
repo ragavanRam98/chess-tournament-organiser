@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import Link from 'next/link';
 import {
   getAccessToken,
   getUserInfo,
@@ -23,9 +24,6 @@ interface AdminLayoutProps {
 }
 
 export default function AdminLayout({ children, activeNav }: AdminLayoutProps) {
-  const [authed, setAuthed] = useState(false);
-  const [loading, setLoading] = useState(true);
-
   useEffect(() => {
     const token = getAccessToken();
     if (!token) { window.location.href = '/login'; return; }
@@ -36,33 +34,27 @@ export default function AdminLayout({ children, activeNav }: AdminLayoutProps) {
     // All admin API endpoints enforce JwtAuthGuard + RolesGuard server-side,
     // so a forged token would fail on every data fetch.
     const user = getUserInfo();
-    if (user?.role === 'SUPER_ADMIN') {
-      setAuthed(true); setLoading(false); return;
-    }
+    if (user?.role === 'SUPER_ADMIN') return;
+
     const role = decodeJwtRole(token);
-    if (role === 'SUPER_ADMIN') {
-      setAuthed(true); setLoading(false); return;
-    }
+    if (role === 'SUPER_ADMIN') return;
 
     // Has a token but wrong role — redirect to login
     window.location.href = '/login';
   }, []);
-
-  if (loading) return null; // avoid flash during hydration
-  if (!authed) return null; // redirecting to /login
 
   return (
     <>
       <nav className={css.adminNav}>
         <div className={css.navInner}>
           {NAV_LINKS.map(l => (
-            <a
+            <Link
               key={l.key}
               href={l.href}
               className={`${css.navLink} ${activeNav === l.key ? css.navLinkActive : ''}`}
             >
               {l.label}
-            </a>
+            </Link>
           ))}
         </div>
       </nav>

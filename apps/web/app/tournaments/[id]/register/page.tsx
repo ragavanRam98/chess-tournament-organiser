@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams, useSearchParams } from 'next/navigation';
 import { api } from '@/lib/api';
 import FideInput from '@/components/FideInput';
@@ -143,16 +144,16 @@ export default function RegistrationPage() {
       <div className="container empty-state" style={{ padding: '80px 24px' }}>
         <div className="empty-state-icon">🔍</div>
         <h3>Tournament not found</h3>
-        <a href="/" className="btn btn-primary" style={{ marginTop: 16 }}>← Back</a>
+        <Link href="/" className="btn btn-primary" style={{ marginTop: 16 }}>← Back</Link>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto', padding: '40px 24px 80px' }}>
-      <a href={`/tournaments/${tournamentId}`} style={{ display: 'inline-flex', gap: 6, marginBottom: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+      <Link href={`/tournaments/${tournamentId}`} style={{ display: 'inline-flex', gap: 6, marginBottom: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
         ← Back to {tournament.title}
-      </a>
+      </Link>
 
       <h1 className="animate-fadeInUp" style={{ fontSize: '1.75rem', marginBottom: 8 }}>
         Register for Tournament

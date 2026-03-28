@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { api, getAccessToken, getUserInfo, decodeJwtRole } from '@/lib/api';
 import css from './dashboard.module.css';
 
@@ -226,9 +227,9 @@ export default function OrganizerDashboard() {
           <h1 className={css.greeting}>{greeting}, {displayName || 'Organizer'}</h1>
           <p className={css.subtitle}>Here&apos;s what&apos;s happening with your tournaments today</p>
         </div>
-        <a href="/organizer/tournaments/new" className={css.createBtn} data-testid="create-tournament-btn">
+        <Link href="/organizer/tournaments/new" className={css.createBtn} data-testid="create-tournament-btn">
           + Create Tournament
-        </a>
+        </Link>
       </div>
 
       {/* Attention banner */}
@@ -239,7 +240,7 @@ export default function OrganizerDashboard() {
             {summary.pendingApprovalCount} tournament{summary.pendingApprovalCount > 1 ? 's' : ''} pending admin approval.
             Players cannot register until approved.
           </span>
-          <a href="/organizer/tournaments" className={css.attentionBtn}>View pending</a>
+          <Link href="/organizer/tournaments" className={css.attentionBtn}>View pending</Link>
         </div>
       )}
 
@@ -295,9 +296,9 @@ export default function OrganizerDashboard() {
           <div className={css.emptyIcon}>♚</div>
           <div className={css.emptyTitle}>Welcome to KingSquare</div>
           <div className={css.emptySub}>Create your first tournament to get started</div>
-          <a href="/organizer/tournaments/new" className={`${css.createBtn} ${css.emptyBtn}`}>
+          <Link href="/organizer/tournaments/new" className={`${css.createBtn} ${css.emptyBtn}`}>
             + Create Tournament
-          </a>
+          </Link>
         </div>
       ) : (
         /* Two column grid */
@@ -306,7 +307,7 @@ export default function OrganizerDashboard() {
           <div className={css.card} data-testid="tournaments-table">
             <div className={css.cardHeader}>
               <span className={css.cardTitle}>Your tournaments</span>
-              <a href="/organizer/tournaments" className={css.cardLink}>View all →</a>
+              <Link href="/organizer/tournaments" className={css.cardLink}>View all →</Link>
             </div>
             {tournaments.length === 0 ? (
               <div className={css.emptyInline}>No tournaments yet. Create your first one.</div>
@@ -401,12 +402,12 @@ export default function OrganizerDashboard() {
               <div className={css.cardHeader}>
                 <span className={css.cardTitle}>Recent registrations</span>
                 {tournaments.length > 0 && (
-                  <a
+                  <Link
                     href={`/organizer/tournaments/${tournaments[0]?.id}/registrations`}
                     className={css.cardLink}
                   >
                     View all →
-                  </a>
+                  </Link>
                 )}
               </div>
               {recent.length === 0 ? (

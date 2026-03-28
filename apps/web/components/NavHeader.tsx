@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   getUserInfo,
   fetchAndCacheUserInfo,
@@ -94,16 +95,16 @@ export default function NavHeader() {
     <header className="header">
       <div className="container header-inner">
         {/* ── Logo ─────────────────────────────────── */}
-        <a href="/" className="logo">
+        <Link href="/" className="logo">
           <span className="logo-icon">♔</span>
           KingSquare
-        </a>
+        </Link>
 
         {/* ── Nav + Profile ───────────────────────── */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <nav>
             <ul className="nav-links" style={{ marginRight: 8 }}>
-              <li><a href="/" className="nav-link">Tournaments</a></li>
+              <li><Link href="/" className="nav-link">Tournaments</Link></li>
             </ul>
           </nav>
 
@@ -308,9 +309,9 @@ export default function NavHeader() {
             </div>
           ) : (
             /* ── Guest: Sign in button ─────────────── */
-            <a href="/login" className="btn btn-primary btn-sm">
+            <Link href="/login" className="btn btn-primary btn-sm">
               Sign in
-            </a>
+            </Link>
           )}
         </div>
       </div>
@@ -324,7 +325,7 @@ function DropdownItem({
   href, icon, label, onClick,
 }: { href: string; icon: string; label: string; onClick: () => void }) {
   return (
-    <a
+    <Link
       href={href}
       onClick={onClick}
       style={{
@@ -343,6 +344,6 @@ function DropdownItem({
     >
       <span style={{ fontSize: '0.9rem', width: 18, textAlign: 'center', flexShrink: 0 }}>{icon}</span>
       {label}
-    </a>
+    </Link>
   );
 }

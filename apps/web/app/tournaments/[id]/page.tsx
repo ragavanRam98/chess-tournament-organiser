@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { api } from '@/lib/api';
 
@@ -204,7 +205,7 @@ export default function TournamentDetailPage() {
         <div className="empty-state-icon">🔍</div>
         <h3>Tournament not found</h3>
         <p style={{ marginTop: 8 }}>The tournament you&apos;re looking for doesn&apos;t exist or has been removed.</p>
-        <a href="/" className="btn btn-primary" style={{ marginTop: 24 }}>← Back to tournaments</a>
+        <Link href="/" className="btn btn-primary" style={{ marginTop: 24 }}>← Back to tournaments</Link>
       </div>
     );
   }
@@ -213,9 +214,9 @@ export default function TournamentDetailPage() {
 
   return (
     <div className="container" style={{ padding: '40px 24px 80px' }}>
-      <a href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+      <Link href="/" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 24, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
         ← All tournaments
-      </a>
+      </Link>
 
       {/* ── Poster banner ─────────────────────────────────────────── */}
       {tournament.posterUrl && (
@@ -374,9 +375,9 @@ export default function TournamentDetailPage() {
                           ) : deadlinePassed ? (
                             <span className="badge badge-neutral">Closed</span>
                           ) : (
-                            <a href={`/tournaments/${id}/register?category=${c.id}`} className="btn btn-primary btn-sm">
+                            <Link href={`/tournaments/${id}/register?category=${c.id}`} className="btn btn-primary btn-sm">
                               Register
-                            </a>
+                            </Link>
                           )}
                         </td>
                       </tr>

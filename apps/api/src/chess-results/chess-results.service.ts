@@ -30,6 +30,51 @@ export class ChessResultsService {
     };
   }
 
+  // ── Verify the URL actually exists on chess-results.com ─────────────────
+
+  private async verifyChessResultsUrl(server: string, tnrId: string): Promise<void> {
+    const host = server === 'chess-results' ? 'chess-results.com' : `${server}.chess-results.com`;
+    const url = `https://${host}/tnr${tnrId}.aspx?lan=1&art=0`;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
+
+      const res = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { 'User-Agent': 'ChessTournamentOrganiser/1.0' },
+        redirect: 'follow',
+      });
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        throw new BadRequestException(
+          `Chess-results.com returned ${res.status}. Please check the tournament URL is correct.`,
+        );
+      }
+
+      // chess-results.com returns 200 even for invalid IDs but shows
+      // "no tournament" in the body — check for the title element
+      const body = await res.text();
+      if (
+        body.includes('Keine Turnierdaten') ||
+        body.includes('No tournament data') ||
+        body.includes('Pas de donn') ||
+        !body.includes('tnr' + tnrId)
+      ) {
+        throw new BadRequestException(
+          'No tournament found at this URL. Please verify the chess-results.com link.',
+        );
+      }
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      throw new BadRequestException(
+        'Could not reach chess-results.com. Please check the URL and try again.',
+      );
+    }
+  }
+
   // ── Link a chess-results URL to a tournament/category ──────────────────
 
   async createLink(data: {
@@ -38,6 +83,9 @@ export class ChessResultsService {
     chessResultsUrl: string;
   }) {
     const { server, tnrId } = this.parseChessResultsUrl(data.chessResultsUrl);
+
+    // Verify the URL is reachable on chess-results.com
+    await this.verifyChessResultsUrl(server, tnrId);
 
     // Verify tournament exists
     const tournament = await this.prisma.tournament.findUnique({
@@ -95,7 +143,7 @@ export class ChessResultsService {
       { linkId: link.id },
     );
 
-    return link;
+    return { data: link };
   }
 
   // ── Remove a link ──────────────────────────────────────────────────────
@@ -111,19 +159,20 @@ export class ChessResultsService {
       data: { syncStatus: 'DISABLED' },
     });
 
-    return { success: true };
+    return { data: { success: true } };
   }
 
   // ── Get links for a tournament ─────────────────────────────────────────
 
   async getLinks(tournamentId: string) {
-    return this.prisma.chessResultsLink.findMany({
+    const links = await this.prisma.chessResultsLink.findMany({
       where: { tournamentId },
       include: {
         category: { select: { id: true, name: true } },
       },
       orderBy: { createdAt: 'asc' },
     });
+    return { data: links };
   }
 
   // ── Public: Get live data for a tournament ─────────────────────────────
@@ -146,9 +195,9 @@ export class ChessResultsService {
       },
     });
 
-    if (links.length === 0) return null;
+    if (links.length === 0) return { data: null };
 
-    return links.map((link) => ({
+    return { data: links.map((link) => ({
       id: link.id,
       category: link.category,
       chessResultsUrl: link.chessResultsUrl,
@@ -164,7 +213,7 @@ export class ChessResultsService {
         isFinal: r.isFinal,
       })),
       crossTable: link.crossTable?.data ?? null,
-    }));
+    })) };
   }
 
   // ── Trigger manual sync ────────────────────────────────────────────────
@@ -186,6 +235,6 @@ export class ChessResultsService {
       { linkId },
     );
 
-    return { success: true, message: 'Sync triggered' };
+    return { data: { success: true, message: 'Sync triggered' } };
   }
 }

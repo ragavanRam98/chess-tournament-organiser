@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { login, decodeJwtRole, getAccessToken } from '@/lib/api';
 
 /**
@@ -77,7 +78,7 @@ export default function LoginPage() {
         </form>
 
         <p style={{ textAlign: 'center', marginTop: 24, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          Don&apos;t have an account? <a href="/register">Register as organizer</a>
+          Don&apos;t have an account? <Link href="/register">Register as organizer</Link>
         </p>
       </div>
     </div>
