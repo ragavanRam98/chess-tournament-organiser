@@ -1,0 +1,446 @@
+﻿node.exe : (node:7076) [DEP0169] 
+DeprecationWarning: `url.parse()` behavior is 
+not standardized and prone to errors that have 
+security implications. Use the WHATWG URL API 
+instead. CVEs are not issued for `url.parse()` 
+vulnerabilities.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((n 
+   ode:7076) [DE...ulnerabilities.:String) [],  
+   RemoteException
+    + FullyQualifiedErrorId : NativeCommandErro 
+   r
+ 
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+(node:8676) [DEP0169] DeprecationWarning: 
+`url.parse()` behavior is not standardized and 
+prone to errors that have security 
+implications. Use the WHATWG URL API instead. 
+CVEs are not issued for `url.parse()` 
+vulnerabilities.
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+(node:5952) [DEP0169] DeprecationWarning: 
+`url.parse()` behavior is not standardized and 
+prone to errors that have security 
+implications. Use the WHATWG URL API instead. 
+CVEs are not issued for `url.parse()` 
+vulnerabilities.
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+FAIL apps/api/test/e2e/flows/purge-expiry.e2e-sp
+ec.ts (23.943 s)
+  Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E)
+    ├ù purge cancels PENDING_PAYMENT + expired 
+registration and decrements registeredCount 
+(158 ms)
+    ΓêÜ GET /registrations/:entryNumber/status 
+ΓåÆ CANCELLED after purge (153 ms)
+    ├ù running purge twice on the same expired 
+registration does NOT double-decrement 
+registeredCount (73 ms)
+    ├ù three consecutive purge runs on 
+CANCELLED registration leave registeredCount 
+unchanged (61 ms)
+    ΓêÜ purge does NOT cancel or decrement a 
+CONFIRMED registration (status guard) (40 ms)
+    ├ù purge only processes PENDING_PAYMENT 
+rows ΓÇö leaves CANCELLED sibling untouched (87 
+ms)
+
+  ΓùÅ Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E) ΓÇ║ 
+purge cancels PENDING_PAYMENT + expired 
+registration and decrements registeredCount
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: 0
+    Received: -1
+
+    [0m [90m 93 |[39m
+     [90m 94 |[39m         [36mconst[39m 
+catAfter [33m=[39m [36mawait[39m 
+getCategoryFromDB(prisma[33m,[39m 
+categoryId)[33m;[39m
+    [31m[1m>[22m[39m[90m 95 |[39m         
+expect(catAfter[33m.[39mregisteredCount)[33m.
+[39mtoBe(countBefore [33m-[39m 
+[35m1[39m)[33m;[39m
+     [90m    |[39m                            
+              [31m[1m^[22m[39m
+     [90m 96 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m
+     [90m 97 |[39m
+     [90m 98 |[39m     [90m// ΓöÇΓöÇ Test 2: 
+GET /status reflects CANCELLED after purge ΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇ[39m[0m
+
+      at Object.<anonymous> 
+(e2e/flows/purge-expiry.e2e-spec.ts:95:42)
+
+  ΓùÅ Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E) ΓÇ║ 
+running purge twice on the same expired 
+registration does NOT double-decrement 
+registeredCount
+
+    expect(received).toBeGreaterThanOrEqual(expe
+cted)
+
+    Expected: >= 0
+    Received:    -1
+
+    [0m [90m 133 |[39m         
+[36mconst[39m catAfterSecond [33m=[39m 
+[36mawait[39m 
+getCategoryFromDB(prisma[33m,[39m 
+categoryId)[33m;[39m
+     [90m 134 |[39m         expect(catAfterSec
+ond[33m.[39mregisteredCount)[33m.[39mtoBe(co
+untAfterFirst)[33m;[39m
+    [31m[1m>[22m[39m[90m 135 |[39m        
+ expect(catAfterSecond[33m.[39mregisteredCount
+)[33m.[39mtoBeGreaterThanOrEqual([35m0[39m)
+[33m;[39m
+     [90m     |[39m                           
+                     [31m[1m^[22m[39m
+     [90m 136 |[39m
+     [90m 137 |[39m         [90m// 
+Registration remains CANCELLED[39m
+     [90m 138 |[39m         [36mconst[39m 
+reg [33m=[39m [36mawait[39m 
+getRegistrationFromDB(prisma[33m,[39m 
+registrationId)[33m;[39m[0m
+
+      at Object.<anonymous> 
+(e2e/flows/purge-expiry.e2e-spec.ts:135:48)
+
+  ΓùÅ Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E) ΓÇ║ 
+three consecutive purge runs on CANCELLED 
+registration leave registeredCount unchanged
+
+    expect(received).toBeGreaterThanOrEqual(expe
+cted)
+
+    Expected: >= 0
+    Received:    -1
+
+    [0m [90m 159 |[39m         
+[36mconst[39m finalCount [33m=[39m 
+([36mawait[39m 
+getCategoryFromDB(prisma[33m,[39m categoryId))
+[33m.[39mregisteredCount[33m;[39m
+     [90m 160 |[39m         expect(finalCount)
+[33m.[39mtoBe(countAfterCancel)[33m;[39m
+    [31m[1m>[22m[39m[90m 161 |[39m        
+ expect(finalCount)[33m.[39mtoBeGreaterThanOrE
+qual([35m0[39m)[33m;[39m
+     [90m     |[39m                           
+ [31m[1m^[22m[39m
+     [90m 162 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m
+     [90m 163 |[39m
+     [90m 164 |[39m     [90m// ΓöÇΓöÇ Test 
+5: CONFIRMED registration is excluded from 
+purge ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇ[39m[0m
+
+      at Object.<anonymous> 
+(e2e/flows/purge-expiry.e2e-spec.ts:161:28)
+
+  ΓùÅ Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E) ΓÇ║ 
+purge only processes PENDING_PAYMENT rows ΓÇö 
+leaves CANCELLED sibling untouched
+
+    expect(received).toBeGreaterThanOrEqual(expe
+cted)
+
+    Expected: >= 0
+    Received:    -1
+
+    [0m [90m 226 |[39m         [90m// Count 
+decremented once for B, A was not touched[39m
+     [90m 227 |[39m         expect(catFinal[3
+3m.[39mregisteredCount)[33m.[39mtoBe(countAft
+erA)[33m;[39m
+    [31m[1m>[22m[39m[90m 228 |[39m        
+ expect(catFinal[33m.[39mregisteredCount)[33m
+.[39mtoBeGreaterThanOrEqual([35m0[39m)[33m;
+[39m
+     [90m     |[39m                           
+               [31m[1m^[22m[39m
+     [90m 229 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m
+     [90m 230 |[39m })[33m;[39m
+     [90m 231 |[39m[0m
+
+      at Object.<anonymous> 
+(e2e/flows/purge-expiry.e2e-spec.ts:228:42)
+
+FAIL apps/api/test/e2e/invariants/edge-cases.e2e
+-spec.ts (24.138 s)
+  Edge cases and failure scenarios (E2E)
+    ΓêÜ payment.failed webhook: registration 
+stays PENDING_PAYMENT, registeredCount 
+unchanged (480 ms)
+    ΓêÜ webhook for non-existent order: 200 { 
+status: ignored }, no Payment row created, 
+count unchanged (50 ms)
+    ΓêÜ duplicate phone: second registration 
+ΓåÆ 409, DB has exactly one active 
+registration, no Prisma error leaked (103 ms)
+    ΓêÜ seat exhaustion: second registration 
+into a full category ΓåÆ 409 
+SEAT_LIMIT_REACHED, registeredCount never 
+exceeds maxSeats (149 ms)
+    ΓêÜ invalid webhook signature: 400, 
+registration and payment remain unchanged (230 
+ms)
+    ├ù webhook after purge cancellation: 
+registration stays CANCELLED, registeredCount 
+unchanged (77 ms)
+
+  ΓùÅ Edge cases and failure scenarios (E2E) 
+ΓÇ║ webhook after purge cancellation: 
+registration stays CANCELLED, registeredCount 
+unchanged
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: 3
+    Received: 2
+
+    [0m [90m 425 |[39m         
+[36mconst[39m catAfterPurge [33m=[39m 
+[36mawait[39m 
+getCategoryFromDB(prisma[33m,[39m 
+categoryId)[33m;[39m
+     [90m 426 |[39m         [36mconst[39m 
+countAfterPurge [33m=[39m catAfterPurge[33m.
+[39mregisteredCount[33m;[39m
+    [31m[1m>[22m[39m[90m 427 |[39m        
+ expect(countAfterPurge)[33m.[39mtoBe(countBef
+orePurge [33m-[39m [35m1[39m)[33m;[39m
+     [90m     |[39m                           
+      [31m[1m^[22m[39m
+     [90m 428 |[39m
+     [90m 429 |[39m         [90m// Capture 
+payment state before the late webhook[39m
+     [90m 430 |[39m         [36mconst[39m 
+paymentBefore [33m=[39m [36mawait[39m 
+getPaymentFromDB(prisma[33m,[39m 
+registrationId)[33m;[39m[0m
+
+      at Object.<anonymous> 
+(e2e/invariants/edge-cases.e2e-spec.ts:427:33)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.count()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\admin\admin.service.ts:275:58
+    
+      272 });
+      273 
+      274 // 3. Payments without registration
+    ΓåÆ 275 const orphanPayments = await this.prisma.payment.count({
+            select: {
+              _count: {
+                select: {
+                  _all: true
+                }
+              }
+            },
+            where: {
+          +   registration: {
+          +     is: RegistrationWhereInput,
+          +     isNot: RegistrationWhereInput
+          +   }
+            }
+          })
+    
+    Argument `registration` must not be null.
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+PASS apps/api/test/e2e/auth/authorization.e2e-sp
+ec.ts (24.595 s)
+  Authorization boundaries (E2E)
+    unauthenticated requests ΓåÆ 401
+      ΓêÜ GET /organizer/dashboard/summary ΓåÆ 
+401 (120 ms)
+      ΓêÜ GET /organizer/tournaments ΓåÆ 401 
+(16 ms)
+      ΓêÜ POST /organizer/tournaments ΓåÆ 401 
+(59 ms)
+      ΓêÜ GET /organizer/tournaments/:id ΓåÆ 
+401 (13 ms)
+      ΓêÜ GET 
+/organizer/tournaments/:id/registrations ΓåÆ 
+401 (26 ms)
+      ΓêÜ GET /admin/tournaments ΓåÆ 401 (21 ms)
+      ΓêÜ GET /admin/organizers ΓåÆ 401 (26 ms)
+      ΓêÜ GET /admin/analytics ΓåÆ 401 (24 ms)
+    ORGANIZER B accessing ORGANIZER A resources 
+ΓåÆ 403
+      ΓêÜ GET /organizer/tournaments/:id (orgA 
+tournament, orgB token) ΓåÆ 403 (60 ms)
+      ΓêÜ GET 
+/organizer/tournaments/:id/registrations (orgA 
+tournament, orgB token) ΓåÆ 403 (25 ms)
+      ΓêÜ PATCH /organizer/tournaments/:id 
+(orgA tournament, orgB token) ΓåÆ 403 (26 ms)
+      ΓêÜ POST 
+/organizer/tournaments/:id/submit (orgA 
+tournament, orgB token) ΓåÆ 403 (22 ms)
+    ORGANIZER accessing admin routes ΓåÆ 403
+      ΓêÜ GET /admin/tournaments ΓåÆ 403 (17 ms)
+      ΓêÜ GET /admin/organizers ΓåÆ 403 (27 ms)
+      ΓêÜ GET /admin/analytics ΓåÆ 403 (44 ms)
+      ΓêÜ PATCH /admin/tournaments/:id/status 
+ΓåÆ 403 (25 ms)
+      ΓêÜ GET /admin/audit-logs ΓåÆ 403 (42 ms)
+    SUPER_ADMIN accessing admin routes ΓåÆ 200
+      ΓêÜ GET /admin/tournaments ΓåÆ 200 (82 ms)
+      ΓêÜ GET /admin/organizers ΓåÆ 200 (44 ms)
+      ΓêÜ GET /admin/analytics ΓåÆ 200 (122 ms)
+      ΓêÜ GET /admin/audit-logs ΓåÆ 200 (30 ms)
+      ΓêÜ GET /admin/integrity-check ΓåÆ 200 
+(240 ms)
+    public routes ΓåÆ 200 without Authorization 
+header
+      ΓêÜ GET /tournaments ΓåÆ 200 (33 ms)
+      ΓêÜ GET /tournaments/:id ΓåÆ 200 (22 ms)
+      ΓêÜ GET /tournaments/:id/participants ΓåÆ 
+200 (27 ms)
+      ΓêÜ GET /health ΓåÆ 200 (9 ms)
+    ORGANIZER accessing own resources ΓåÆ 200
+      ΓêÜ GET /organizer/tournaments ΓåÆ 200 
+for orgA (29 ms)
+      ΓêÜ GET /organizer/tournaments/:id ΓåÆ 
+200 when tournament belongs to orgA (28 ms)
+      ΓêÜ GET 
+/organizer/tournaments/:id/registrations ΓåÆ 
+200 for own tournament (38 ms)
+      ΓêÜ GET /organizer/dashboard/summary ΓåÆ 
+200 (44 ms)
+      ΓêÜ GET /auth/me ΓåÆ 200 with correct 
+role (21 ms)
+    malformed or wrong-secret token ΓåÆ 401
+      ΓêÜ completely invalid token string ΓåÆ 
+401 (7 ms)
+      ΓêÜ JWT signed with wrong secret ΓåÆ 401 
+(9 ms)
+      ΓêÜ SUPER_ADMIN token does not grant 
+ORGANIZER dashboard access ΓåÆ 403 (13 ms)
+
+(node:1620) [DEP0169] DeprecationWarning: 
+`url.parse()` behavior is not standardized and 
+prone to errors that have security 
+implications. Use the WHATWG URL API instead. 
+CVEs are not issued for `url.parse()` 
+vulnerabilities.
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+(node:23496) [DEP0169] DeprecationWarning: 
+`url.parse()` behavior is not standardized and 
+prone to errors that have security 
+implications. Use the WHATWG URL API instead. 
+CVEs are not issued for `url.parse()` 
+vulnerabilities.
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+PASS apps/api/test/e2e/flows/registration-paymen
+t.e2e-spec.ts (26.659 s)
+  Registration ΓåÆ Payment ΓåÆ Webhook ΓåÆ 
+CONFIRMED (E2E)
+    ΓêÜ POST /register ΓåÆ 201, body contains 
+registration_id, entry_number, status, 
+expires_at (152 ms)
+    ΓêÜ DB: registration.status = 
+PENDING_PAYMENT immediately after register (59 
+ms)
+    ΓêÜ DB: registeredCount incremented by 
+trigger after each successful registration (48 
+ms)
+    ΓêÜ POST /register ΓåÆ response contains 
+razorpay order details from mocked service (39 
+ms)
+    ΓêÜ POST /payments/webhook 
+(payment.captured) ΓåÆ 200 { status: ok } (67 
+ms)
+    ΓêÜ DB: registration.status = CONFIRMED and 
+payment.status = PAID after webhook (76 ms)
+    ΓêÜ DB: registeredCount is NOT changed by 
+the webhook (trigger fires on INSERT only) (72 
+ms)
+    ΓêÜ GET /registrations/:entryNumber/status 
+ΓåÆ CONFIRMED after webhook (73 ms)
+    ΓêÜ POST /register with same phone twice 
+ΓåÆ second request is 409 
+DUPLICATE_REGISTRATION (44 ms)
+    ΓêÜ POST /payments/webhook with invalid 
+signature ΓåÆ 400 (7 ms)
+
+FAIL apps/api/test/e2e/invariants/webhook-idempo
+tency.e2e-spec.ts (26.633 s)
+  Webhook idempotency (E2E)
+    ΓêÜ first payment.captured webhook sets 
+registration to CONFIRMED and payment to PAID 
+(206 ms)
+    ΓêÜ second (duplicate) webhook returns { 
+status: ok } and leaves state unchanged (86 ms)
+    ΓêÜ registeredCount increments exactly once 
+regardless of how many webhooks arrive (93 ms)
+    ΓêÜ 10 duplicate webhooks all return ok and 
+registration remains CONFIRMED (158 ms)
+    ΓêÜ webhook for non-existent order returns 
+{ status: ignored } (9 ms)
+    ├ù concurrent purge + webhook ΓÇö final 
+state is consistent: status matches 
+registeredCount (66 ms)
+    ΓêÜ payment.failed webhook leaves 
+registration in PENDING_PAYMENT, payment.status 
+= FAILED (49 ms)
+
+  ΓùÅ Webhook idempotency (E2E) ΓÇ║ concurrent 
+purge + webhook ΓÇö final state is consistent: 
+status matches registeredCount
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: 4
+    Received: 3
+
+    [0m [90m 227 |[39m         } 
+[36melse[39m {
+     [90m 228 |[39m             [90m// Purge 
+won ΓÇö seat released[39m
+    [31m[1m>[22m[39m[90m 229 |[39m        
+     expect(finalCat[33m.[39mregisteredCount)
+[33m.[39mtoBe(countAfterInsert [33m-[39m 
+[35m1[39m)[33m;[39m
+     [90m     |[39m                           
+                   [31m[1m^[22m[39m
+     [90m 230 |[39m             expect(finalCa
+t[33m.[39mregisteredCount)[33m.[39mtoBeGreat
+erThanOrEqual([35m0[39m)[33m;[39m
+     [90m 231 |[39m         }
+     [90m 232 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m[0m
+
+      at Object.<anonymous> (e2e/invariants/webh
+ook-idempotency.e2e-spec.ts:229:46)
+
+Test Suites: 3 failed, 2 passed, 5 total
+Tests:       6 failed, 57 passed, 63 total
+Snapshots:   0 total
+Time:        27.858 s
+Ran all test suites.

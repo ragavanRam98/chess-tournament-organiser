@@ -1,0 +1,837 @@
+﻿node.exe : (node:9036) [DEP0169] 
+DeprecationWarning: `url.parse()` behavior is 
+not standardized and prone to errors that have 
+security implications. Use the WHATWG URL API 
+instead. CVEs are not issued for `url.parse()` 
+vulnerabilities.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((n 
+   ode:9036) [DE...ulnerabilities.:String) [],  
+   RemoteException
+    + FullyQualifiedErrorId : NativeCommandErro 
+   r
+ 
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+(node:2260) [DEP0169] DeprecationWarning: 
+`url.parse()` behavior is not standardized and 
+prone to errors that have security 
+implications. Use the WHATWG URL API instead. 
+CVEs are not issued for `url.parse()` 
+vulnerabilities.
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+(node:12388) [DEP0169] DeprecationWarning: 
+`url.parse()` behavior is not standardized and 
+prone to errors that have security 
+implications. Use the WHATWG URL API instead. 
+CVEs are not issued for `url.parse()` 
+vulnerabilities.
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+(node:21444) [DEP0169] DeprecationWarning: 
+`url.parse()` behavior is not standardized and 
+prone to errors that have security 
+implications. Use the WHATWG URL API instead. 
+CVEs are not issued for `url.parse()` 
+vulnerabilities.
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+(node:8148) [DEP0169] DeprecationWarning: 
+`url.parse()` behavior is not standardized and 
+prone to errors that have security 
+implications. Use the WHATWG URL API instead. 
+CVEs are not issued for `url.parse()` 
+vulnerabilities.
+(Use `node --trace-deprecation ...` to show 
+where the warning was created)
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+FAIL apps/api/test/e2e/flows/purge-expiry.e2e-sp
+ec.ts (28.186 s)
+  Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E)
+    ├ù purge cancels PENDING_PAYMENT + expired 
+registration and decrements registeredCount 
+(155 ms)
+    ΓêÜ GET /registrations/:entryNumber/status 
+ΓåÆ CANCELLED after purge (153 ms)
+    ├ù running purge twice on the same expired 
+registration does NOT double-decrement 
+registeredCount (72 ms)
+    ├ù three consecutive purge runs on 
+CANCELLED registration leave registeredCount 
+unchanged (64 ms)
+    ΓêÜ purge does NOT cancel or decrement a 
+CONFIRMED registration (status guard) (40 ms)
+    ├ù purge only processes PENDING_PAYMENT 
+rows ΓÇö leaves CANCELLED sibling untouched (99 
+ms)
+
+  ΓùÅ Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E) ΓÇ║ 
+purge cancels PENDING_PAYMENT + expired 
+registration and decrements registeredCount
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: 0
+    Received: -1
+
+    [0m [90m 93 |[39m
+     [90m 94 |[39m         [36mconst[39m 
+catAfter [33m=[39m [36mawait[39m 
+getCategoryFromDB(prisma[33m,[39m 
+categoryId)[33m;[39m
+    [31m[1m>[22m[39m[90m 95 |[39m         
+expect(catAfter[33m.[39mregisteredCount)[33m.
+[39mtoBe(countBefore [33m-[39m 
+[35m1[39m)[33m;[39m
+     [90m    |[39m                            
+              [31m[1m^[22m[39m
+     [90m 96 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m
+     [90m 97 |[39m
+     [90m 98 |[39m     [90m// ΓöÇΓöÇ Test 2: 
+GET /status reflects CANCELLED after purge ΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓö
+ÇΓöÇΓöÇΓöÇΓöÇ[39m[0m
+
+      at Object.<anonymous> 
+(e2e/flows/purge-expiry.e2e-spec.ts:95:42)
+
+  ΓùÅ Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E) ΓÇ║ 
+running purge twice on the same expired 
+registration does NOT double-decrement 
+registeredCount
+
+    expect(received).toBeGreaterThanOrEqual(expe
+cted)
+
+    Expected: >= 0
+    Received:    -1
+
+    [0m [90m 133 |[39m         
+[36mconst[39m catAfterSecond [33m=[39m 
+[36mawait[39m 
+getCategoryFromDB(prisma[33m,[39m 
+categoryId)[33m;[39m
+     [90m 134 |[39m         expect(catAfterSec
+ond[33m.[39mregisteredCount)[33m.[39mtoBe(co
+untAfterFirst)[33m;[39m
+    [31m[1m>[22m[39m[90m 135 |[39m        
+ expect(catAfterSecond[33m.[39mregisteredCount
+)[33m.[39mtoBeGreaterThanOrEqual([35m0[39m)
+[33m;[39m
+     [90m     |[39m                           
+                     [31m[1m^[22m[39m
+     [90m 136 |[39m
+     [90m 137 |[39m         [90m// 
+Registration remains CANCELLED[39m
+     [90m 138 |[39m         [36mconst[39m 
+reg [33m=[39m [36mawait[39m 
+getRegistrationFromDB(prisma[33m,[39m 
+registrationId)[33m;[39m[0m
+
+      at Object.<anonymous> 
+(e2e/flows/purge-expiry.e2e-spec.ts:135:48)
+
+  ΓùÅ Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E) ΓÇ║ 
+three consecutive purge runs on CANCELLED 
+registration leave registeredCount unchanged
+
+    expect(received).toBeGreaterThanOrEqual(expe
+cted)
+
+    Expected: >= 0
+    Received:    -1
+
+    [0m [90m 159 |[39m         
+[36mconst[39m finalCount [33m=[39m 
+([36mawait[39m 
+getCategoryFromDB(prisma[33m,[39m categoryId))
+[33m.[39mregisteredCount[33m;[39m
+     [90m 160 |[39m         expect(finalCount)
+[33m.[39mtoBe(countAfterCancel)[33m;[39m
+    [31m[1m>[22m[39m[90m 161 |[39m        
+ expect(finalCount)[33m.[39mtoBeGreaterThanOrE
+qual([35m0[39m)[33m;[39m
+     [90m     |[39m                           
+ [31m[1m^[22m[39m
+     [90m 162 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m
+     [90m 163 |[39m
+     [90m 164 |[39m     [90m// ΓöÇΓöÇ Test 
+5: CONFIRMED registration is excluded from 
+purge ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+ΓöÇΓöÇΓöÇΓöÇΓöÇ[39m[0m
+
+      at Object.<anonymous> 
+(e2e/flows/purge-expiry.e2e-spec.ts:161:28)
+
+  ΓùÅ Expiry ΓåÆ Purge ΓåÆ CANCELLED (E2E) ΓÇ║ 
+purge only processes PENDING_PAYMENT rows ΓÇö 
+leaves CANCELLED sibling untouched
+
+    expect(received).toBeGreaterThanOrEqual(expe
+cted)
+
+    Expected: >= 0
+    Received:    -1
+
+    [0m [90m 226 |[39m         [90m// Count 
+decremented once for B, A was not touched[39m
+     [90m 227 |[39m         expect(catFinal[3
+3m.[39mregisteredCount)[33m.[39mtoBe(countAft
+erA)[33m;[39m
+    [31m[1m>[22m[39m[90m 228 |[39m        
+ expect(catFinal[33m.[39mregisteredCount)[33m
+.[39mtoBeGreaterThanOrEqual([35m0[39m)[33m;
+[39m
+     [90m     |[39m                           
+               [31m[1m^[22m[39m
+     [90m 229 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m
+     [90m 230 |[39m })[33m;[39m
+     [90m 231 |[39m[0m
+
+      at Object.<anonymous> 
+(e2e/flows/purge-expiry.e2e-spec.ts:228:42)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.count()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\admin\admin.service.ts:275:58
+    
+      272 });
+      273 
+      274 // 3. Payments without registration
+    ΓåÆ 275 const orphanPayments = await this.prisma.payment.count({
+            select: {
+              _count: {
+                select: {
+                  _all: true
+                }
+              }
+            },
+            where: {
+          +   registration: {
+          +     is: RegistrationWhereInput,
+          +     isNot: RegistrationWhereInput
+          +   }
+            }
+          })
+    
+    Argument `registration` must not be null.
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+FAIL apps/api/test/e2e/invariants/edge-cases.e2e
+-spec.ts (28.422 s)
+  Edge cases and failure scenarios (E2E)
+    ΓêÜ payment.failed webhook: registration 
+stays PENDING_PAYMENT, registeredCount 
+unchanged (436 ms)
+    ΓêÜ webhook for non-existent order: 200 { 
+status: ignored }, no Payment row created, 
+count unchanged (58 ms)
+    ΓêÜ duplicate phone: second registration 
+ΓåÆ 409, DB has exactly one active 
+registration, no Prisma error leaked (117 ms)
+    ΓêÜ seat exhaustion: second registration 
+into a full category ΓåÆ 409 
+SEAT_LIMIT_REACHED, registeredCount never 
+exceeds maxSeats (109 ms)
+    ΓêÜ invalid webhook signature: 400, 
+registration and payment remain unchanged (118 
+ms)
+    ├ù webhook after purge cancellation: 
+registration stays CANCELLED, registeredCount 
+unchanged (92 ms)
+
+  ΓùÅ Edge cases and failure scenarios (E2E) 
+ΓÇ║ webhook after purge cancellation: 
+registration stays CANCELLED, registeredCount 
+unchanged
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: 3
+    Received: 2
+
+    [0m [90m 425 |[39m         
+[36mconst[39m catAfterPurge [33m=[39m 
+[36mawait[39m 
+getCategoryFromDB(prisma[33m,[39m 
+categoryId)[33m;[39m
+     [90m 426 |[39m         [36mconst[39m 
+countAfterPurge [33m=[39m catAfterPurge[33m.
+[39mregisteredCount[33m;[39m
+    [31m[1m>[22m[39m[90m 427 |[39m        
+ expect(countAfterPurge)[33m.[39mtoBe(countBef
+orePurge [33m-[39m [35m1[39m)[33m;[39m
+     [90m     |[39m                           
+      [31m[1m^[22m[39m
+     [90m 428 |[39m
+     [90m 429 |[39m         [90m// Capture 
+payment state before the late webhook[39m
+     [90m 430 |[39m         [36mconst[39m 
+paymentBefore [33m=[39m [36mawait[39m 
+getPaymentFromDB(prisma[33m,[39m 
+registrationId)[33m;[39m[0m
+
+      at Object.<anonymous> 
+(e2e/invariants/edge-cases.e2e-spec.ts:427:33)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+  console.log
+    prisma:error 
+    Invalid `this.prisma.payment.create()` invocation in
+    F:\Self Projects\Easy Chess Academy\Chess Tournament Organiser\apps\api\src\payments\payments.service.ts:22:35
+    
+      19 
+      20 async createOrder(registrationId: string, amountPaise: number) {
+      21     const order = await this.razorpay.createOrder(amountPaise);
+    ΓåÆ 22     await this.prisma.payment.create(
+    Unique constraint failed on the fields: (`razorpay_order_id`)
+
+      at Object.mc (../../../node_modules/@prisma/client/runtime/library.js:21:432)
+
+FAIL apps/api/test/e2e/invariants/webhook-idempo
+tency.e2e-spec.ts (28.673 s)
+  Webhook idempotency (E2E)
+    ΓêÜ first payment.captured webhook sets 
+registration to CONFIRMED and payment to PAID 
+(414 ms)
+    ├ù second (duplicate) webhook returns { 
+status: ok } and leaves state unchanged (288 ms)
+    ΓêÜ registeredCount increments exactly once 
+regardless of how many webhooks arrive (179 ms)
+    ├ù 10 duplicate webhooks all return ok and 
+registration remains CONFIRMED (102 ms)
+    ΓêÜ webhook for non-existent order returns 
+{ status: ignored } (18 ms)
+    ├ù concurrent purge + webhook ΓÇö final 
+state is consistent: status matches 
+registeredCount (111 ms)
+    ├ù payment.failed webhook leaves 
+registration in PENDING_PAYMENT, payment.status 
+= FAILED (70 ms)
+
+  ΓùÅ Webhook idempotency (E2E) ΓÇ║ second 
+(duplicate) webhook returns { status: ok } and 
+leaves state unchanged
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: "CONFIRMED"
+    Received: "PENDING_PAYMENT"
+
+    [0m [90m 115 |[39m         
+[36mconst[39m payAfterFirst [33m=[39m 
+[36mawait[39m 
+getPaymentFromDB(prisma[33m,[39m 
+reg[33m.[39mregistrationId)[33m;[39m
+     [90m 116 |[39m
+    [31m[1m>[22m[39m[90m 117 |[39m        
+ expect(afterFirst[33m.[39mstatus)[33m.[39mt
+oBe([32m'CONFIRMED'[39m)[33m;[39m
+     [90m     |[39m                           
+        [31m[1m^[22m[39m
+     [90m 118 |[39m
+     [90m 119 |[39m         [90m// Second 
+webhook ΓÇö identical payload[39m
+     [90m 120 |[39m         [36mconst[39m 
+res [33m=[39m [36mawait[39m 
+triggerWebhook(request[33m,[39m 
+reg[33m.[39mrazorpayOrderId[33m,[39m payId(
+[35m2[39m))[33m.[39mexpect([35m200[39m)[33
+m;[39m[0m
+
+      at Object.<anonymous> (e2e/invariants/webh
+ook-idempotency.e2e-spec.ts:117:35)
+
+  ΓùÅ Webhook idempotency (E2E) ΓÇ║ 10 
+duplicate webhooks all return ok and 
+registration remains CONFIRMED
+
+    expect(received).toEqual(expected) // deep 
+equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+    -   "status": "ok",
+    +   "status": "ignored",
+      }
+
+    [0m [90m 159 |[39m         [36mfor[39m 
+([36mlet[39m i [33m=[39m 
+[35m0[39m[33m;[39m i [33m<[39m 
+[35m10[39m[33m;[39m i[33m++[39m) {
+     [90m 160 |[39m             
+[36mconst[39m res [33m=[39m [36mawait[39m 
+triggerWebhook(request[33m,[39m 
+reg[33m.[39mrazorpayOrderId[33m,[39m payId(
+[35m4[39m))[33m.[39mexpect([35m200[39m)[33
+m;[39m
+    [31m[1m>[22m[39m[90m 161 |[39m        
+     
+expect(res[33m.[39mbody)[33m.[39mtoEqual({ 
+status[33m:[39m [32m'ok'[39m })[33m;[39m
+     [90m     |[39m                           
+   [31m[1m^[22m[39m
+     [90m 162 |[39m         }
+     [90m 163 |[39m
+     [90m 164 |[39m         [36mconst[39m 
+dbReg [33m=[39m [36mawait[39m 
+getRegistrationFromDB(prisma[33m,[39m 
+reg[33m.[39mregistrationId)[33m;[39m[0m
+
+      at Object.<anonymous> (e2e/invariants/webh
+ook-idempotency.e2e-spec.ts:161:30)
+
+  ΓùÅ Webhook idempotency (E2E) ΓÇ║ concurrent 
+purge + webhook ΓÇö final state is consistent: 
+status matches registeredCount
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: 4
+    Received: 3
+
+    [0m [90m 220 |[39m         } 
+[36melse[39m {
+     [90m 221 |[39m             [90m// Purge 
+won ΓÇö seat released[39m
+    [31m[1m>[22m[39m[90m 222 |[39m        
+     expect(finalCat[33m.[39mregisteredCount)
+[33m.[39mtoBe(countAfterInsert [33m-[39m 
+[35m1[39m)[33m;[39m
+     [90m     |[39m                           
+                   [31m[1m^[22m[39m
+     [90m 223 |[39m             expect(finalCa
+t[33m.[39mregisteredCount)[33m.[39mtoBeGreat
+erThanOrEqual([35m0[39m)[33m;[39m
+     [90m 224 |[39m         }
+     [90m 225 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m[0m
+
+      at Object.<anonymous> (e2e/invariants/webh
+ook-idempotency.e2e-spec.ts:222:46)
+
+  ΓùÅ Webhook idempotency (E2E) ΓÇ║ 
+payment.failed webhook leaves registration in 
+PENDING_PAYMENT, payment.status = FAILED
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: "FAILED"
+    Received: undefined
+
+    [0m [90m 263 |[39m
+     [90m 264 |[39m         [36mconst[39m 
+payment [33m=[39m [36mawait[39m 
+getPaymentFromDB(prisma[33m,[39m 
+reg[33m.[39mregistrationId)[33m;[39m
+    [31m[1m>[22m[39m[90m 265 |[39m        
+ expect(payment[33m?[39m[33m.[39mstatus)[33
+m.[39mtoBe([32m'FAILED'[39m)[33m;[39m
+     [90m     |[39m                           
+      [31m[1m^[22m[39m
+     [90m 266 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m
+     [90m 267 |[39m })[33m;[39m
+     [90m 268 |[39m[0m
+
+      at Object.<anonymous> (e2e/invariants/webh
+ook-idempotency.e2e-spec.ts:265:33)
+
+FAIL apps/api/test/e2e/flows/registration-paymen
+t.e2e-spec.ts (28.783 s)
+  Registration ΓåÆ Payment ΓåÆ Webhook ΓåÆ 
+CONFIRMED (E2E)
+    ΓêÜ POST /register ΓåÆ 201, body contains 
+registration_id, entry_number, status, 
+expires_at (313 ms)
+    ΓêÜ DB: registration.status = 
+PENDING_PAYMENT immediately after register (325 
+ms)
+    ΓêÜ DB: registeredCount incremented by 
+trigger after each successful registration (114 
+ms)
+    ├ù POST /register ΓåÆ response contains 
+razorpay order details from mocked service (61 
+ms)
+    ├ù POST /payments/webhook 
+(payment.captured) ΓåÆ 200 { status: ok } (70 
+ms)
+    ├ù DB: registration.status = CONFIRMED and 
+payment.status = PAID after webhook (100 ms)
+    ΓêÜ DB: registeredCount is NOT changed by 
+the webhook (trigger fires on INSERT only) (88 
+ms)
+    ├ù GET /registrations/:entryNumber/status 
+ΓåÆ CONFIRMED after webhook (89 ms)
+    ΓêÜ POST /register with same phone twice 
+ΓåÆ second request is 409 
+DUPLICATE_REGISTRATION (63 ms)
+    ΓêÜ POST /payments/webhook with invalid 
+signature ΓåÆ 400 (16 ms)
+
+  ΓùÅ Registration ΓåÆ Payment ΓåÆ Webhook ΓåÆ 
+CONFIRMED (E2E) ΓÇ║ POST /register ΓåÆ response 
+contains razorpay order details from mocked 
+service
+
+    expect(received).not.toBeNull()
+
+    Received: null
+
+    [0m [90m 146 |[39m
+     [90m 147 |[39m         [90m// The mock 
+createOrder returns { id: 'order_e2e_rp-<TS>' 
+}[39m
+    [31m[1m>[22m[39m[90m 148 |[39m        
+ expect(res[33m.[39mbody[33m.[39mdata[33m.
+[39mpayment)[33m.[39mnot[33m.[39mtoBeNull()
+[33m;[39m
+     [90m     |[39m                           
+                [31m[1m^[22m[39m
+     [90m 149 |[39m         expect(res[33m.[
+39mbody[33m.[39mdata[33m.[39mpayment[33m.[
+39mrazorpay_order_id)[33m.[39mtoBeDefined()[3
+3m;[39m
+     [90m 150 |[39m         expect(res[33m.[
+39mbody[33m.[39mdata[33m.[39mpayment[33m.[
+39mamount_paise)[33m.[39mtoBeDefined()[33m;[
+39m
+     [90m 151 |[39m         expect(res[33m.[
+39mbody[33m.[39mdata[33m.[39mpayment[33m.[
+39mcurrency)[33m.[39mtoBe([32m'INR'[39m)[33
+m;[39m[0m
+
+      at Object.<anonymous> (e2e/flows/registrat
+ion-payment.e2e-spec.ts:148:43)
+
+  ΓùÅ Registration ΓåÆ Payment ΓåÆ Webhook ΓåÆ 
+CONFIRMED (E2E) ΓÇ║ POST /payments/webhook 
+(payment.captured) ΓåÆ 200 { status: ok }
+
+    expect(received).toBeTruthy()
+
+    Received: ""
+
+    [0m [90m 161 |[39m         [90m// 
+per-registration so we need the actual order ID 
+from the response[39m
+     [90m 162 |[39m         [36mconst[39m 
+orderId [33m=[39m 
+reg[33m.[39mrazorpayOrderId[33m;[39m
+    [31m[1m>[22m[39m[90m 163 |[39m        
+ expect(orderId)[33m.[39mtoBeTruthy()[33m;[3
+9m
+     [90m     |[39m                         
+[31m[1m^[22m[39m
+     [90m 164 |[39m
+     [90m 165 |[39m         [36mconst[39m 
+res [33m=[39m [36mawait[39m 
+triggerWebhook(request[33m,[39m 
+orderId[33m,[39m [33mRAZORPAY_PAYMENT[39m 
+[33m+[39m [32m'-5'[39m)
+     [90m 166 |[39m             
+[33m.[39mexpect([35m200[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (e2e/flows/registrat
+ion-payment.e2e-spec.ts:163:25)
+
+  ΓùÅ Registration ΓåÆ Payment ΓåÆ Webhook ΓåÆ 
+CONFIRMED (E2E) ΓÇ║ DB: registration.status = 
+CONFIRMED and payment.status = PAID after 
+webhook
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: "INITIATED"
+    Received: undefined
+
+    [0m [90m 178 |[39m         [90m// 
+Confirm there is a Payment row in INITIATED 
+state[39m
+     [90m 179 |[39m         [36mconst[39m 
+paymentBefore [33m=[39m [36mawait[39m 
+getPaymentFromDB(prisma[33m,[39m 
+reg[33m.[39mregistrationId)[33m;[39m
+    [31m[1m>[22m[39m[90m 180 |[39m        
+ expect(paymentBefore[33m?[39m[33m.[39mstatu
+s)[33m.[39mtoBe([32m'INITIATED'[39m)[33m;[
+39m
+     [90m     |[39m                           
+            [31m[1m^[22m[39m
+     [90m 181 |[39m         expect(paymentBefo
+re[33m?[39m[33m.[39mrazorpayPaymentId)[33m.
+[39mtoBeNull()[33m;[39m
+     [90m 182 |[39m
+     [90m 183 |[39m         [36mawait[39m 
+triggerWebhook(request[33m,[39m 
+orderId[33m,[39m paymentId)[33m.[39mexpect(
+[35m200[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (e2e/flows/registrat
+ion-payment.e2e-spec.ts:180:39)
+
+  ΓùÅ Registration ΓåÆ Payment ΓåÆ Webhook ΓåÆ 
+CONFIRMED (E2E) ΓÇ║ GET 
+/registrations/:entryNumber/status ΓåÆ 
+CONFIRMED after webhook
+
+    expect(received).toBe(expected) // 
+Object.is equality
+
+    Expected: "CONFIRMED"
+    Received: "PENDING_PAYMENT"
+
+    [0m [90m 217 |[39m             
+[33m.[39mexpect([35m200[39m)[33m;[39m
+     [90m 218 |[39m
+    [31m[1m>[22m[39m[90m 219 |[39m        
+ expect(res[33m.[39mbody[33m.[39mdata[33m.
+[39mstatus)[33m.[39mtoBe([32m'CONFIRMED'[39m
+)[33m;[39m
+     [90m     |[39m                           
+           [31m[1m^[22m[39m
+     [90m 220 |[39m         expect(res[33m.[
+39mbody[33m.[39mdata[33m.[39mconfirmed_at)[
+33m.[39mnot[33m.[39mtoBeNull()[33m;[39m
+     [90m 221 |[39m     }[33m,[39m 
+[35m30[39m_000)[33m;[39m
+     [90m 222 |[39m[0m
+
+      at Object.<anonymous> (e2e/flows/registrat
+ion-payment.e2e-spec.ts:219:38)
+
+PASS apps/api/test/e2e/auth/authorization.e2e-sp
+ec.ts (28.863 s)
+  Authorization boundaries (E2E)
+    unauthenticated requests ΓåÆ 401
+      ΓêÜ GET /organizer/dashboard/summary ΓåÆ 
+401 (123 ms)
+      ΓêÜ GET /organizer/tournaments ΓåÆ 401 
+(13 ms)
+      ΓêÜ POST /organizer/tournaments ΓåÆ 401 
+(44 ms)
+      ΓêÜ GET /organizer/tournaments/:id ΓåÆ 
+401 (14 ms)
+      ΓêÜ GET 
+/organizer/tournaments/:id/registrations ΓåÆ 
+401 (15 ms)
+      ΓêÜ GET /admin/tournaments ΓåÆ 401 (17 ms)
+      ΓêÜ GET /admin/organizers ΓåÆ 401 (14 ms)
+      ΓêÜ GET /admin/analytics ΓåÆ 401 (14 ms)
+    ORGANIZER B accessing ORGANIZER A resources 
+ΓåÆ 403
+      ΓêÜ GET /organizer/tournaments/:id (orgA 
+tournament, orgB token) ΓåÆ 403 (68 ms)
+      ΓêÜ GET 
+/organizer/tournaments/:id/registrations (orgA 
+tournament, orgB token) ΓåÆ 403 (40 ms)
+      ΓêÜ PATCH /organizer/tournaments/:id 
+(orgA tournament, orgB token) ΓåÆ 403 (53 ms)
+      ΓêÜ POST 
+/organizer/tournaments/:id/submit (orgA 
+tournament, orgB token) ΓåÆ 403 (30 ms)
+    ORGANIZER accessing admin routes ΓåÆ 403
+      ΓêÜ GET /admin/tournaments ΓåÆ 403 (28 ms)
+      ΓêÜ GET /admin/organizers ΓåÆ 403 (22 ms)
+      ΓêÜ GET /admin/analytics ΓåÆ 403 (22 ms)
+      ΓêÜ PATCH /admin/tournaments/:id/status 
+ΓåÆ 403 (23 ms)
+      ΓêÜ GET /admin/audit-logs ΓåÆ 403 (18 ms)
+    SUPER_ADMIN accessing admin routes ΓåÆ 200
+      ΓêÜ GET /admin/tournaments ΓåÆ 200 (69 ms)
+      ΓêÜ GET /admin/organizers ΓåÆ 200 (40 ms)
+      ΓêÜ GET /admin/analytics ΓåÆ 200 (152 ms)
+      ΓêÜ GET /admin/audit-logs ΓåÆ 200 (34 ms)
+      ΓêÜ GET /admin/integrity-check ΓåÆ 200 
+(265 ms)
+    public routes ΓåÆ 200 without Authorization 
+header
+      ΓêÜ GET /tournaments ΓåÆ 200 (41 ms)
+      ΓêÜ GET /tournaments/:id ΓåÆ 200 (24 ms)
+      ΓêÜ GET /tournaments/:id/participants ΓåÆ 
+200 (28 ms)
+      ΓêÜ GET /health ΓåÆ 200 (9 ms)
+    ORGANIZER accessing own resources ΓåÆ 200
+      ΓêÜ GET /organizer/tournaments ΓåÆ 200 
+for orgA (30 ms)
+      ΓêÜ GET /organizer/tournaments/:id ΓåÆ 
+200 when tournament belongs to orgA (28 ms)
+      ΓêÜ GET 
+/organizer/tournaments/:id/registrations ΓåÆ 
+200 for own tournament (48 ms)
+      ΓêÜ GET /organizer/dashboard/summary ΓåÆ 
+200 (47 ms)
+      ΓêÜ GET /auth/me ΓåÆ 200 with correct 
+role (23 ms)
+    malformed or wrong-secret token ΓåÆ 401
+      ΓêÜ completely invalid token string ΓåÆ 
+401 (9 ms)
+      ΓêÜ JWT signed with wrong secret ΓåÆ 401 
+(9 ms)
+      ΓêÜ SUPER_ADMIN token does not grant 
+ORGANIZER dashboard access ΓåÆ 403 (21 ms)
+
+Test Suites: 4 failed, 1 passed, 5 total
+Tests:       13 failed, 50 passed, 63 total
+Snapshots:   0 total
+Time:        30.864 s, estimated 100 s
+Ran all test suites.

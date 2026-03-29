@@ -65,16 +65,16 @@ export class PaymentsService {
 
         // Step 3 — State machine transition
         if (event === 'payment.captured') {
-            await this.prisma.$transaction([
-                this.prisma.payment.update({
+            await this.prisma.$transaction(async (tx) => {
+                await tx.payment.update({
                     where: { razorpayOrderId },
                     data: { status: 'PAID', razorpayPaymentId, gatewayResponse: paymentEntity },
-                }),
-                this.prisma.registration.update({
-                    where: { id: existing.registrationId },
+                });
+                await tx.registration.updateMany({
+                    where: { id: existing.registrationId, status: 'PENDING_PAYMENT' },
                     data: { status: 'CONFIRMED', confirmedAt: new Date() },
-                }),
-            ]);
+                });
+            });
             await this.queue.add(QUEUE_NAMES.NOTIFICATIONS, JOB_NAMES.SEND_EMAIL, {
                 registrationId: existing.registrationId, type: 'REGISTRATION_CONFIRMED',
             });

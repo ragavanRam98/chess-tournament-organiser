@@ -43,20 +43,23 @@ export class PurgeExpiredProcessor extends WorkerHost {
 
     for (const reg of expired) {
       try {
-        await this.prisma.$transaction([
-          // Cancel the registration
-          this.prisma.registration.update({
-            where: { id: reg.id },
+        const result = await this.prisma.$transaction(async (tx) => {
+          const updated = await tx.registration.updateMany({
+            where: { id: reg.id, status: 'PENDING_PAYMENT' },
             data: { status: 'CANCELLED' },
-          }),
+          });
+          if (updated.count === 0) return 0;
           // Release the seat atomically
-          this.prisma.category.update({
+          await tx.category.update({
             where: { id: reg.categoryId },
             data: { registeredCount: { decrement: 1 } },
-          }),
-        ]);
-        purged++;
-        this.logger.log(`[PURGE_EXPIRED] Cancelled registration ${reg.entryNumber} — seat released`);
+          });
+          return 1;
+        });
+        if (result) {
+          purged++;
+          this.logger.log(`[PURGE_EXPIRED] Cancelled registration ${reg.entryNumber} — seat released`);
+        }
       } catch (err) {
         this.logger.error(`[PURGE_EXPIRED] Failed to cancel registration ${reg.id}`, err);
       }
